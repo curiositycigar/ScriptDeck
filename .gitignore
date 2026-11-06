@@ -5,3 +5,9 @@ dist/
 **/logs/
 *.xcuserstate
 xcuserdata/
+
+# Local credentials and private deployment settings
+.env
+.env.*
+!.env.example
+.private/

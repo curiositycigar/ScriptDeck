@@ -22,3 +22,9 @@ Example request:
 > Add a log archival script in Operations/Logs with a folder picker and a compression selection defaulting to gzip. Update library.json without running the script.
 
 The app automatically saves execution output under `logs/<script filename>/` beside each script, retaining the filename extension. Do not duplicate the app's logging infrastructure. Use **History** in the output panel to inspect each run.
+
+## Private configuration
+
+Never commit real server addresses, account names, deployment directories, passwords, tokens, or private keys in shared scripts or library configuration. Keep private scripts outside the public example library and keep host details in `~/.ssh/config`. Use SSH keys or the SSH agent for authentication.
+
+`.env`, `.env.*`, and `.private/` are ignored by Git and excluded from release packages. Keep actual credentials outside the project even when these exclusions exist. Script output can still disclose private information in local run logs.
