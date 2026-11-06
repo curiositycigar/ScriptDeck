@@ -1,0 +1,88 @@
+# ScriptDeck
+
+[English](README.md) | **简体中文**
+
+一款原生 macOS 应用，用于管理本地脚本、并行运行交互式会话，以及安排后台定时任务。
+
+## 安装
+
+从 [GitHub Releases](https://github.com/curiositycigar/ScriptDeck/releases/latest) 下载最新 ZIP，解压后将 **ScriptDeck.app** 移至“应用程序”文件夹。
+
+- 需要 macOS 13 或更高版本。目前发布的二进制版本支持 Apple Silicon（arm64）。
+- 应用使用临时签名，尚未经过 Apple 公证。如果 macOS 阻止打开，请在**系统设置 → 隐私与安全性**中检查并允许打开。
+- 请自行安装脚本所需的运行环境，例如 Python 或 Node.js。
+
+## 快速开始
+
+1. 点击**添加 Workspace…**（⌘O），选择附带的 `ExampleLibrary` 文件夹，或自己的脚本目录。
+2. 导入脚本（⌘I）、将脚本拖入侧边栏，或创建脚本配置。空目录可以初始化为新的脚本库。
+3. 选择脚本，填写参数，点击**运行**（⌘Return）。
+4. 展开**运行输出**（⌘J），切换执行会话、使用终端或查看执行历史。
+
+应用支持**英语**和**简体中文**，默认跟随系统语言。可以在**设置 → 通用 → 应用语言**中切换，退出并重新打开应用后生效。用户自定义名称、配置值和脚本输出保留原有语言。README 提供中英文版本，其他项目文档使用英文。
+
+## 功能
+
+- 独立 Workspace，支持多级分组、搜索、脚本导入和配置编辑。
+- 支持位置参数、命名参数、布尔开关、文件与文件夹选择，以及显示名称与实际值分离的选项。
+- 多个任务可同时执行，每个会话拥有独立的交互式终端、状态、运行时长和日志。中断与停止操作仅作用于所选会话。
+- 基于 macOS `launchd` 的一次性、每日、每周和固定间隔定时任务。可从**全部定时任务**或脚本运行栏中的定时操作创建。
+- 菜单栏入口。关闭窗口后应用继续运行，定时任务也可在退出应用后执行。
+- 本地执行历史，支持筛选、分页查看日志、导出和删除。从输出列表移除已完成会话不会删除历史记录。
+
+定时任务保存脚本配置和参数的快照，不接受键盘输入，并防止同一定时任务重叠执行。Mac 必须开机且用户已登录。任务不会唤醒 Mac，也不会在睡眠期间执行；恢复后最多补执行一次错过的任务。暂停任务会取消后续执行，停止当前运行需要单独操作。请在当前执行结束后编辑或删除定时任务。
+
+## 脚本库
+
+每个 Workspace 都是包含 `library.json` 和脚本的文件夹：
+
+```text
+MyScripts/
+├── library.json
+├── library.schema.json
+└── scripts/
+    └── deploy.sh
+```
+
+```json
+{
+  "$schema": "library.schema.json",
+  "version": 1,
+  "scripts": [{
+    "id": "deploy",
+    "name": "部署",
+    "group": "部署任务",
+    "file": "scripts/deploy.sh",
+    "interpreter": "/bin/bash",
+    "parameters": [{
+      "id": "environment",
+      "label": "环境",
+      "type": "select",
+      "required": true,
+      "default": "staging",
+      "options": ["staging", "production"]
+    }]
+  }]
+}
+```
+
+`file` 和 `cwd` 相对于 Workspace 目录解析；省略 `cwd` 时使用脚本所在目录。支持 Bash、Zsh、Python、Node.js、`direct`（使用 shebang）和可执行文件的绝对路径。参数按配置顺序分别传递。完整字段和参数样式请参阅 [Schema](Resources/library.schema.json) 和[脚本编写指南（英文）](ExampleLibrary/AI-INSTRUCTIONS.md)。
+
+应用会检测外部配置修改。配置无效或存在保存冲突时，会显示提示并保留内存中上一次有效配置。从脚本库外导入脚本时，会将其复制到 `scripts/`；移除脚本配置或 Workspace 登记不会删除原始文件。
+
+日志及其元数据保存在脚本旁的 `logs/<脚本文件名>/` 中。日志创建成功后才会开始执行。删除历史记录需要确认，并会永久删除对应的 `.log` 和 `.json` 文件；正在执行或仍在保存的记录会被跳过。参数和按键不会单独记录，但脚本输出和回显的输入会进入日志。请避免保存或打印密码。
+
+定时任务定义和独立辅助程序保存在 `~/Library/Application Support/ScriptDeck/Schedules/`；LaunchAgent 文件保存在 `~/Library/LaunchAgents/com.lucasyou.ScriptDeck.schedule.<ID>.plist`。移动应用不会影响已有定时任务，移动脚本后则需要更新相应任务。
+
+## 构建
+
+使用 Xcode 或带有 Swift 6.3 及以上版本的 Command Line Tools。依赖版本固定在 `Package.resolved` 中，首次构建需要联网。
+
+```bash
+bash package.sh  # 构建、临时签名并生成发布 ZIP
+bash test.sh     # 使用临时脚本运行自检
+```
+
+输出为 `dist/ScriptDeck.app` 和 `dist/ScriptDeck-<version>.zip`。发布包包含应用、示例脚本库、中英文 README 和英文维护文档。打包不会运行脚本或安装定时任务。
+
+维护与测试说明见[架构文档（英文）](Docs/Architecture.md)，翻译规则见[本地化文档（英文）](Docs/Localization.md)，图标资源说明见[图标设计（英文）](Docs/Icon-design.md)。

@@ -1,5 +1,7 @@
 # ScriptDeck
 
+**English** | [简体中文](README.zh-CN.md)
+
 A native macOS app for organizing local scripts, running parallel interactive sessions, and scheduling background tasks.
 
 ## Install
@@ -17,7 +19,7 @@ Download the latest ZIP from [GitHub Releases](https://github.com/curiositycigar
 3. Select a script, fill in its parameters, and click **Run** (⌘Return).
 4. Expand **Run Output** (⌘J) to switch between sessions, use the terminal, and browse execution history.
 
-The interface supports **English** and **Simplified Chinese**, following the system by default. Change it in **Settings → General → App Language**, then quit and reopen the app. User-defined names, configuration values, and script output stay in their original language. All project documentation is in English.
+The interface supports **English** and **Simplified Chinese**, following the system by default. Change it in **Settings → General → App Language**, then quit and reopen the app. User-defined names, configuration values, and script output stay in their original language. This README is available in English and Simplified Chinese; other project documentation is in English.
 
 ## Features
 
@@ -81,6 +83,6 @@ bash package.sh  # Build, ad hoc sign, and create the release ZIP
 bash test.sh     # Run self-checks with temporary fixtures
 ```
 
-Outputs are `dist/ScriptDeck.app` and `dist/ScriptDeck-<version>.zip`. Packaging includes the app, example library, and English documentation. It does not launch scripts or install schedules.
+Outputs are `dist/ScriptDeck.app` and `dist/ScriptDeck-<version>.zip`. Packaging includes the app, example library, both README languages, and English maintenance documentation. It does not launch scripts or install schedules.
 
 See [Architecture](Docs/Architecture.md) for maintenance and testing details, [Localization](Docs/Localization.md) for translation guidance, and [Icon Design](Docs/Icon-design.md) for icon assets.
