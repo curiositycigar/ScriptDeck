@@ -1,0 +1,241 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "本地脚本库配置",
+  "type": "object",
+  "required": [
+    "version",
+    "scripts"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "const": 1
+    },
+    "scripts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/script"
+      }
+    },
+    "folders": {
+      "type": "array",
+      "description": "侧栏文件夹路径，使用 / 分隔层级；支持空文件夹",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "$defs": {
+    "option": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object",
+          "required": [
+            "value"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "label": {
+              "type": "string",
+              "minLength": 1
+            },
+            "value": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      ]
+    },
+    "parameter": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "text",
+            "file",
+            "folder",
+            "select"
+          ],
+          "default": "text"
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "default": {
+          "type": "string"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/option"
+          }
+        },
+        "passing": {
+          "enum": [
+            "positional",
+            "named",
+            "flag"
+          ],
+          "default": "positional"
+        },
+        "argumentName": {
+          "type": "string",
+          "pattern": "^-{1,2}[A-Za-z0-9][A-Za-z0-9_-]*$"
+        },
+        "argumentFormat": {
+          "enum": [
+            "separated",
+            "equals"
+          ],
+          "default": "separated"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "select"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "options"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "passing": {
+                "enum": [
+                  "named",
+                  "flag"
+                ]
+              }
+            },
+            "required": [
+              "passing"
+            ]
+          },
+          "then": {
+            "required": [
+              "argumentName"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "passing": {
+                "const": "flag"
+              }
+            },
+            "required": [
+              "passing"
+            ]
+          },
+          "then": {
+            "properties": {
+              "default": {
+                "enum": [
+                  "",
+                  "true",
+                  "false"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "script": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "file"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "相对于脚本库目录的路径，也可使用绝对路径"
+        },
+        "group": {
+          "type": "string",
+          "description": "用 / 分隔多级分组",
+          "default": "未分组"
+        },
+        "description": {
+          "type": "string"
+        },
+        "interpreter": {
+          "type": "string",
+          "minLength": 1,
+          "default": "/bin/bash",
+          "description": "/bin/bash、/bin/zsh、python3、node、direct，或自定义解释器绝对路径"
+        },
+        "cwd": {
+          "type": "string",
+          "description": "相对于脚本库目录，省略则使用脚本所在目录"
+        },
+        "execution": {
+          "enum": [
+            "embedded",
+            "terminal"
+          ],
+          "deprecated": true,
+          "description": "兼容旧配置；所有脚本统一在应用内交互终端运行，此字段不再影响执行。"
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/parameter"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,146 @@
+import AppKit
+import Combine
+
+/// App-wide execution registry. Global state is aggregated across every session;
+/// terminal commands and exports always target the selected session.
+@MainActor
+final class ProcessRunner: ObservableObject {
+    @Published private(set) var sessions: [ExecutionSession] = []
+    @Published private(set) var selectedSessionID: UUID?
+    @Published private(set) var launchRevision = 0
+    @Published private(set) var historyRevision = 0
+    private let preferences: AppPreferences
+    private let idleSession: ExecutionSession
+    private var subscriptions: [UUID: Set<AnyCancellable>] = [:]
+    private var importedScheduledRuns = Set<String>()
+    var foregroundRunningSessions: [ExecutionSession] { runningSessions.filter { !$0.isBackgroundExecution } }
+
+    func synchronizeScheduled(task: ScheduledTask, state: ScheduleRuntime, root: URL, running: Bool) {
+        guard let runID = state.runID else { return }
+        for session in sessions where session.scheduledTaskID == task.id && session.recordID != runID && session.isRunning {
+            session.reconcilePreviousScheduled(task: task, root: root)
+            historyRevision += 1
+        }
+        if let session = sessions.first(where: { $0.recordID == runID }) {
+            let changed = session.isRunning != running || session.outcome != state.outcome
+            session.updateScheduled(task: task, state: state, root: root, running: running)
+            if changed { historyRevision += 1 }
+        } else if !importedScheduledRuns.contains(runID) {
+            importedScheduledRuns.insert(runID)
+            let session = ExecutionSession(preferences: preferences)
+            session.updateScheduled(task: task, state: state, root: root, running: running)
+            sessions.append(session)
+            var observers = Set<AnyCancellable>()
+            session.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &observers)
+            subscriptions[session.id] = observers
+            if selectedSessionID == nil { selectedSessionID = session.id }
+            if running { launchRevision += 1 }
+            historyRevision += 1
+        }
+    }
+
+    init(preferences: AppPreferences? = nil) {
+        let preferences = preferences ?? AppPreferences()
+        self.preferences = preferences
+        idleSession = ExecutionSession(preferences: preferences)
+    }
+
+    var selectedSession: ExecutionSession {
+        sessions.first { $0.id == selectedSessionID } ?? idleSession
+    }
+    var runningSessions: [ExecutionSession] { sessions.filter(\.isRunning) }
+    var completedSessions: [ExecutionSession] { sessions.filter { !$0.isRunning }.reversed() }
+    var isRunning: Bool { sessions.contains(where: \.isRunning) }
+    var selectedIsRunning: Bool { selectedSession.isRunning }
+    var activeRecordIDs: Set<String> { Set(runningSessions.compactMap(\.recordID)) }
+    var protectedHistoryRecordIDs: Set<String> {
+        sessions.reduce(into: Set<String>()) { $0.formUnion($1.protectedHistoryRecordIDs) }
+    }
+    var hasPendingHistoryWrites: Bool { sessions.contains(where: \.hasPendingHistoryWrites) }
+    func isWorkspaceRunning(_ id: String) -> Bool { runningSessions.contains { $0.workspaceID == id } }
+    func protectedWorkspaceID(for id: String) -> String? { isWorkspaceRunning(id) ? id : nil }
+    func isActive(workspaceID: String, scriptID: String) -> Bool {
+        runningSessions.contains { $0.workspaceID == workspaceID && $0.scriptID == scriptID }
+    }
+
+    // Selected-session accessors keep terminal presentation separate from global activity.
+    var activeName: String { selectedSession.activeName }
+    var workspaceID: String? { selectedSession.workspaceID }
+    var workspaceName: String { selectedSession.workspaceName }
+    var scriptID: String? { selectedSession.scriptID }
+    var status: String { selectedSession.status }
+    var stopping: Bool { selectedSession.stopping }
+    var hasOutput: Bool { selectedSession.hasOutput }
+    var sessionID: UUID { selectedSession.id }
+    var terminalView: RunnerTerminalView { selectedSession.terminalView }
+    var recordID: String? { selectedSession.recordID }
+    var historyIssue: String? { selectedSession.historyIssue }
+    var output: String { exportText() }
+    func exportText() -> String { selectedSession.exportText() }
+    func clearOutput() { selectedSession.clearOutput() }
+    func interrupt() { selectedSession.interrupt() }
+    func stop(force: Bool = false) { selectedSession.stop(force: force) }
+    func focusTerminal() { selectedSession.focusTerminal() }
+
+    func select(_ id: UUID) {
+        guard selectedSessionID != id, sessions.contains(where: { $0.id == id }) else { return }
+        selectedSessionID = id
+    }
+
+    @discardableResult
+    func run(item: ScriptItem, arguments: [String], workspaceID: String? = nil,
+             workspaceName: String = "") throws -> ExecutionSession {
+        let selectNewSession = !isRunning || selectedSessionID == nil
+        let session = ExecutionSession(preferences: preferences)
+        try session.run(item: item, arguments: arguments, workspaceID: workspaceID, workspaceName: workspaceName)
+        sessions.append(session)
+        var observers = Set<AnyCancellable>()
+        session.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &observers)
+        session.$historyRevision.dropFirst().sink { [weak self] _ in
+            self?.historyRevision += 1
+        }.store(in: &observers)
+        subscriptions[session.id] = observers
+        if selectNewSession { selectedSessionID = session.id }
+        launchRevision += 1
+        historyRevision += 1
+        return session
+    }
+
+    /// Removing a session never deletes its persisted execution history.
+    @discardableResult
+    func dismissSession(_ id: UUID) -> Bool {
+        guard let session = sessions.first(where: { $0.id == id }),
+              !session.isRunning, !session.hasPendingHistoryWrites else { return false }
+        removeSessions([id])
+        return true
+    }
+
+    /// Release terminal buffers only when execution and its log finalization are complete.
+    func dismissCompletedSessions() {
+        let removable = sessions.filter { !$0.isRunning && !$0.hasPendingHistoryWrites }
+        removeSessions(Set(removable.map(\.id)))
+    }
+
+    private func removeSessions(_ ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        sessions.removeAll { ids.contains($0.id) }
+        for id in ids { subscriptions.removeValue(forKey: id) }
+        if let selectedSessionID, ids.contains(selectedSessionID) {
+            self.selectedSessionID = runningSessions.first?.id ?? sessions.last?.id
+        }
+    }
+
+    func afterHistorySaved(_ completion: @escaping @MainActor @Sendable () -> Void) {
+        let pending = sessions.filter(\.hasPendingHistoryWrites)
+        guard !pending.isEmpty else { DispatchQueue.main.async { completion() }; return }
+        var remaining = pending.count
+        for session in pending {
+            session.afterHistorySaved {
+                remaining -= 1
+                if remaining == 0 { completion() }
+            }
+        }
+    }
+}
