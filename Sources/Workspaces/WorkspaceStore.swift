@@ -23,12 +23,12 @@ final class WorkspaceStore: ObservableObject {
                 guard registry.version == 1,
                       Set(registry.workspaces.map(\.id)).count == registry.workspaces.count,
                       registry.workspaces.allSatisfy({ !$0.id.isEmpty && !$0.name.isEmpty && $0.directory.hasPrefix("/") }) else {
-                    throw RunnerError(message: "Workspace 登记格式无效。")
+                    throw RunnerError(message: L("Invalid workspace registry format."))
                 }
                 items = registry.workspaces
                 selectedID = items.contains(where: { $0.id == registry.selectedID }) ? registry.selectedID : items.first?.id
             } catch {
-                registryIssue = "无法读取本机 Workspace 登记，已有数据未覆盖。\n\(error.localizedDescription)"
+                registryIssue = L("Unable to read the local workspace registry. Existing data was preserved.\n{0}", "\(error.localizedDescription)")
                 self.error = registryIssue
             }
         }
@@ -69,7 +69,7 @@ final class WorkspaceStore: ObservableObject {
         let directory = canonical(url)
         var isDirectory: ObjCBool = false
         guard FileManager.default.fileExists(atPath: directory.path, isDirectory: &isDirectory), isDirectory.boolValue else {
-            throw RunnerError(message: "请选择可访问的 Workspace 文件夹。")
+            throw RunnerError(message: L("Choose an accessible workspace folder."))
         }
         let item = Workspace(name: directory.lastPathComponent, directory: directory.path)
         items.append(item)
@@ -81,7 +81,7 @@ final class WorkspaceStore: ObservableObject {
     func rename(_ id: String, to name: String) throws {
         try checkRegistry()
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { throw RunnerError(message: "Workspace 名称不能为空。") }
+        guard !name.isEmpty else { throw RunnerError(message: L("The workspace name cannot be empty.")) }
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         items[index].name = name
         persist()
@@ -93,14 +93,14 @@ final class WorkspaceStore: ObservableObject {
     }
     func relocate(_ id: String, to url: URL, protectedID: String?) throws {
         try checkRegistry()
-        guard id != protectedID else { throw RunnerError(message: "请先结束此 Workspace 的任务，再重新定位目录。") }
+        guard id != protectedID else { throw RunnerError(message: L("Finish this workspace's tasks before relocating its folder.")) }
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
         if let existing = existing(at: url), existing.id != id {
-            throw RunnerError(message: "这个目录已经登记为“\(existing.name)”。")
+            throw RunnerError(message: L("This folder is already registered as “{0}”.", "\(existing.name)"))
         }
         let directory = canonical(url)
         guard FileManager.default.fileExists(atPath: directory.appendingPathComponent("library.json").path) else {
-            throw RunnerError(message: "所选目录中没有 library.json，请选择原脚本库的新位置。")
+            throw RunnerError(message: L("The selected folder has no library.json. Choose the library's new location."))
         }
         items[index].directory = directory.path
         stores[id]?.loadDirectory(directory)
@@ -109,7 +109,7 @@ final class WorkspaceStore: ObservableObject {
     }
     func remove(_ id: String, protectedID: String?) throws {
         try checkRegistry()
-        guard id != protectedID else { throw RunnerError(message: "请先结束此 Workspace 的任务，再移除登记。") }
+        guard id != protectedID else { throw RunnerError(message: L("Finish this workspace's tasks before removing its registration.")) }
         items.removeAll { $0.id == id }
         if selectedID == id { selectedID = items.first?.id }
         stores[id] = nil
@@ -126,16 +126,16 @@ final class WorkspaceStore: ObservableObject {
         do {
             let data = try JSONEncoder().encode(WorkspaceRegistry(workspaces: items, selectedID: selectedID))
             preferences.set(data, forKey: registryKey)
-        } catch { self.error = "Workspace 登记保存失败：\(error.localizedDescription)" }
+        } catch { self.error = L("Unable to save the workspace registry: {0}", "\(error.localizedDescription)") }
     }
     private func refreshAvailability() {
         var issues: [String: String] = [:]
         for item in items {
             var directory: ObjCBool = false
             if !FileManager.default.fileExists(atPath: item.directory, isDirectory: &directory) || !directory.boolValue {
-                issues[item.id] = "目录不可用"
+                issues[item.id] = L("Folder unavailable")
             } else if !FileManager.default.fileExists(atPath: item.directoryURL.appendingPathComponent("library.json").path) {
-                issues[item.id] = "缺少 library.json"
+                issues[item.id] = L("Missing library.json")
             }
         }
         if issues != availability { availability = issues }

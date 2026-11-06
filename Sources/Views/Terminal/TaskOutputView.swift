@@ -19,8 +19,8 @@ struct TaskOutputView: View {
         .sheet(isPresented: $showHistory) {
             ExecutionHistoryView(workspaces: workspaces, runner: runner)
         }
-        .alert("保存失败", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button("好", role: .cancel) { error = nil }
+        .alert(L("Unable to Save"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button(L("OK"), role: .cancel) { error = nil }
         } message: { Text(error ?? "") }
     }
 
@@ -31,25 +31,25 @@ struct TaskOutputView: View {
                     Image(systemName: outputExpanded ? "chevron.down" : "chevron.right")
                         .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Image(systemName: "terminal").foregroundStyle(.secondary)
-                    Text("运行输出").font(.callout.weight(.semibold))
+                    Text(L("Run Output")).font(.callout.weight(.semibold))
                 }
             }
             .buttonStyle(.plain)
-            .help(outputExpanded ? "收起运行输出" : "展开运行输出")
-            .accessibilityLabel(outputExpanded ? "收起运行输出" : "展开运行输出")
-            Text(runner.isRunning ? "\(runner.runningSessions.count) 个运行中" : "暂无运行任务")
+            .help(outputExpanded ? L("Collapse Output") : L("Expand Output"))
+            .accessibilityLabel(outputExpanded ? L("Collapse Output") : L("Expand Output"))
+            Text(runner.isRunning ? L("{0} running", "\(runner.runningSessions.count)") : L("No running tasks"))
                 .font(.caption).foregroundStyle(runner.isRunning ? Color.orange : Color.secondary)
             Spacer(minLength: 8)
             if outputExpanded {
                 Button { showTaskList.toggle() } label: {
                     Image(systemName: "sidebar.left")
                 }
-                .help(showTaskList ? "隐藏任务列表" : "显示任务列表")
-                .accessibilityLabel(showTaskList ? "隐藏任务列表" : "显示任务列表")
+                .help(showTaskList ? L("Hide task list") : L("Show task list"))
+                .accessibilityLabel(showTaskList ? L("Hide task list") : L("Show task list"))
             }
             Button { showHistory = true } label: {
-                Label("历史记录", systemImage: "clock.arrow.circlepath")
-            }.help("查看所有脚本的执行记录和本地日志")
+                Label(L("History"), systemImage: "clock.arrow.circlepath")
+            }.help(L("View execution records and local logs for all scripts"))
         }
         .controlSize(.small)
         .padding(.horizontal, 16).padding(.vertical, 11)
@@ -59,14 +59,14 @@ struct TaskOutputView: View {
     private var taskList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 4) {
-                Text("运行中 · \(runner.runningSessions.count)")
+                Text(L("Running · {0}", "\(runner.runningSessions.count)"))
                     .font(.caption.weight(.medium)).foregroundStyle(.secondary)
                     .padding(.horizontal, 8).padding(.vertical, 6)
                 ForEach(runner.runningSessions) { session in
                     taskButton(session)
                 }
                 if runner.runningSessions.isEmpty {
-                    Text("暂无运行任务").font(.caption).foregroundStyle(.secondary)
+                    Text(L("No running tasks")).font(.caption).foregroundStyle(.secondary)
                         .padding(8)
                 }
                 if !runner.completedSessions.isEmpty {
@@ -75,7 +75,7 @@ struct TaskOutputView: View {
                             taskButton(session)
                         }
                     } label: {
-                        Text("已完成 · \(runner.completedSessions.count)")
+                        Text(L("Completed · {0}", "\(runner.completedSessions.count)"))
                             .font(.caption).foregroundStyle(.secondary)
                     }.padding(.top, 6)
                 }
@@ -84,22 +84,22 @@ struct TaskOutputView: View {
         .background(Color(nsColor: .controlBackgroundColor))
         .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack {
-                Text("本次会话").foregroundStyle(.secondary)
+                Text(L("This Session")).foregroundStyle(.secondary)
                 Spacer()
                 Button { runner.dismissSession(runner.sessionID) } label: {
                     Image(systemName: "trash")
                 }
                 .buttonStyle(.plain)
                 .disabled(runner.selectedSessionID == nil || runner.selectedIsRunning || runner.selectedSession.hasPendingHistoryWrites)
-                .help("删除所选任务记录，保留执行历史和日志")
-                .accessibilityLabel("删除所选任务记录")
+                .help(L("Remove the selected task record while preserving history and logs"))
+                .accessibilityLabel(L("Remove selected task record"))
                 Button { runner.dismissCompletedSessions() } label: {
                     Image(systemName: "xmark.circle")
                 }
                 .buttonStyle(.plain)
                 .disabled(!runner.sessions.contains { !$0.isRunning && !$0.hasPendingHistoryWrites })
-                .help("移出已完成任务，保留执行历史和日志")
-                .accessibilityLabel("移出已完成任务")
+                .help(L("Remove completed tasks while preserving history and logs"))
+                .accessibilityLabel(L("Remove completed tasks"))
             }.font(.caption).padding(10).background(.bar)
         }
         .frame(minWidth: 160, idealWidth: 200, maxWidth: 280, maxHeight: .infinity)
@@ -115,14 +115,14 @@ struct TaskOutputView: View {
         .buttonStyle(.plain)
         .background(runner.selectedSessionID == session.id ? Color.accentColor.opacity(0.15) : Color.clear,
                     in: RoundedRectangle(cornerRadius: 6))
-        .accessibilityValue(runner.selectedSessionID == session.id ? "已选中" : "未选中")
+        .accessibilityValue(runner.selectedSessionID == session.id ? L("Selected") : L("Not selected"))
         .contextMenu {
-            Button("删除此记录", role: .destructive) { runner.dismissSession(session.id) }
+            Button(L("Remove This Record"), role: .destructive) { runner.dismissSession(session.id) }
                 .disabled(session.isRunning || session.hasPendingHistoryWrites)
             if session.isRunning {
-                Text("请先停止任务再删除记录")
+                Text(L("Stop the task before removing its record"))
             } else if session.hasPendingHistoryWrites {
-                Text("正在保存日志，请稍候")
+                Text(L("Saving log, please wait"))
             }
         }
     }
@@ -133,16 +133,16 @@ struct TaskOutputView: View {
                 Button(action: revealSelectedScript) {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(runner.activeName).font(.callout.weight(.medium)).lineLimit(1)
-                        Text(runner.workspaceName.isEmpty ? "未指定 Workspace" : runner.workspaceName)
+                        Text(runner.workspaceName.isEmpty ? L("Unspecified Workspace") : runner.workspaceName)
                             .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .help("返回任务所属的 Workspace 和脚本")
+                .help(L("Return to this task's workspace and script"))
                 .disabled(!workspaces.items.contains { $0.id == runner.workspaceID })
                 Text(runner.status).font(.caption).foregroundStyle(.secondary).lineLimit(1)
             } else {
-                Text("选择任务查看输出").font(.callout).foregroundStyle(.secondary)
+                Text(L("Select a task to view output")).font(.callout).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             if let issue = runner.historyIssue {
@@ -153,19 +153,19 @@ struct TaskOutputView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(runner.exportText(), forType: .string)
             } label: { Image(systemName: "doc.on.doc") }
-            .help("复制所选任务日志").accessibilityLabel("复制所选任务日志").disabled(!runner.hasOutput)
+            .help(L("Copy Selected Task Log")).accessibilityLabel(L("Copy Selected Task Log")).disabled(!runner.hasOutput)
             Menu {
-                Button("保存日志…", action: saveLog).disabled(!runner.hasOutput)
-                Button("清空终端") { runner.clearOutput() }.disabled(runner.selectedIsRunning || !runner.hasOutput)
+                Button(L("Save Log…"), action: saveLog).disabled(!runner.hasOutput)
+                Button(L("Clear Terminal")) { runner.clearOutput() }.disabled(runner.selectedIsRunning || !runner.hasOutput)
             } label: { Image(systemName: "ellipsis") }
             .menuStyle(.borderlessButton).fixedSize()
-            .help("所选任务日志选项").accessibilityLabel("所选任务日志选项")
+            .help(L("Selected Task Log Options")).accessibilityLabel(L("Selected Task Log Options"))
             if runner.selectedIsRunning {
-                Button("中断") { runner.interrupt() }.help("向所选任务发送 Ctrl+C")
+                Button(L("Interrupt")) { runner.interrupt() }.help(L("Send Ctrl+C to the selected task"))
                     .disabled(runner.selectedSession.isBackgroundExecution)
-                Button(runner.stopping ? "强制停止" : "停止", role: .destructive) {
+                Button(runner.stopping ? L("Force Stop") : L("Stop"), role: .destructive) {
                     runner.stop(force: runner.stopping)
-                }.help("仅停止所选任务").fixedSize()
+                }.help(L("Stop only the selected task")).fixedSize()
             }
         }
         .controlSize(.small)
@@ -184,8 +184,8 @@ struct TaskOutputView: View {
                 .overlay(alignment: .topLeading) {
                     if !runner.hasOutput {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("终端已就绪").font(.callout.weight(.medium))
-                            Text("运行脚本后在此查看输出和输入。密码输入通常不显示字符。")
+                            Text(L("Terminal Ready")).font(.callout.weight(.medium))
+                            Text(L("Run a script to view output and type here. Password input usually does not display characters."))
                                 .font(.caption).foregroundStyle(.secondary)
                         }.padding(20).allowsHitTesting(false)
                     }
@@ -224,7 +224,7 @@ struct TaskOutputView: View {
 
     private func saveLog() {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = "脚本运行日志.txt"
+        panel.nameFieldStringValue = L("Script Log.txt")
         panel.allowedContentTypes = [.plainText]
         let text = runner.exportText()
         panel.begin { result in
@@ -278,26 +278,26 @@ private struct ExecutionSessionRow: View {
                         .foregroundStyle(Color.accentColor)
                         .frame(width: 20, height: 20)
                         .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
-                        .help(session.workspaceName.isEmpty ? "未指定 Workspace" : session.workspaceName)
-                        .accessibilityLabel(session.workspaceName.isEmpty ? "未指定 Workspace" : session.workspaceName)
+                        .help(session.workspaceName.isEmpty ? L("Unspecified Workspace") : session.workspaceName)
+                        .accessibilityLabel(session.workspaceName.isEmpty ? L("Unspecified Workspace") : session.workspaceName)
                     Text(session.activeName)
                         .font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
                     Spacer(minLength: 0)
                     Text(duration(at: context.date))
                         .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                         .fixedSize()
-                        .accessibilityLabel("运行时长 " + duration(at: context.date))
+                        .accessibilityLabel(L("Elapsed ") + duration(at: context.date))
                 }
                 HStack(spacing: 5) {
                     Image(systemName: symbol).foregroundStyle(resultColor)
                         .accessibilityLabel(session.status)
-                    Text(session.startedAt.formatted(date: .numeric, time: .standard))
+                    Text(L10n.date(session.startedAt, dateStyle: .short))
                         .monospacedDigit().lineLimit(1)
                 }
                 .font(.caption2).foregroundStyle(.secondary)
             }
             .padding(.vertical, 4)
-            .help("\(session.workspaceName) / \(session.activeName)\n\(session.status) · 运行时长 \(duration(at: context.date))\n开始：\(session.startedAt.formatted())")
+            .help(L("{0} / {1}\n{2} · elapsed {3}\nStarted: {4}", "\(session.workspaceName)", "\(session.activeName)", "\(session.status)", "\(duration(at: context.date))", "\(L10n.date(session.startedAt))"))
         }
     }
 }

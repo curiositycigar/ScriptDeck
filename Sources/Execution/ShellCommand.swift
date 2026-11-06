@@ -29,31 +29,31 @@ func scriptArguments(for item: ScriptItem, values: [String: String]) throws -> [
 
 func executionCommand(_ item: ScriptItem, arguments: [String]) throws -> (argv: [String], directory: String) {
     guard item.path.hasPrefix("/"), item.workingDirectory.isEmpty || item.workingDirectory.hasPrefix("/") else {
-        throw RunnerError(message: "脚本路径和工作目录需要使用绝对路径，请点击“选择…”填写。")
+        throw RunnerError(message: L("The script and working directory must use absolute paths. Use “Choose…” to select them."))
     }
     var directoryFlag: ObjCBool = false
     guard FileManager.default.fileExists(atPath: item.path, isDirectory: &directoryFlag), !directoryFlag.boolValue else {
-        throw RunnerError(message: "找不到脚本：\(item.path)")
+        throw RunnerError(message: L("Script not found: {0}", "\(item.path)"))
     }
     guard FileManager.default.isReadableFile(atPath: item.path) else {
-        throw RunnerError(message: "无法读取脚本：\(item.path)")
+        throw RunnerError(message: L("Unable to read the script: {0}", "\(item.path)"))
     }
     let directory = item.workingDirectory.isEmpty ? URL(fileURLWithPath: item.path).deletingLastPathComponent().path : item.workingDirectory
     guard FileManager.default.fileExists(atPath: directory, isDirectory: &directoryFlag), directoryFlag.boolValue else {
-        throw RunnerError(message: "工作目录不存在：\(directory)")
+        throw RunnerError(message: L("Working directory not found: {0}", "\(directory)"))
     }
     let prefix: [String]
     switch item.interpreter {
     case "direct":
         guard FileManager.default.isExecutableFile(atPath: item.path) else {
-            throw RunnerError(message: "脚本没有执行权限，请改用解释器或先设置执行权限。")
+            throw RunnerError(message: L("The script is not executable. Choose an interpreter or grant execute permission."))
         }
         prefix = [item.path]
     case "python3": prefix = ["/usr/bin/env", "python3", "-u", item.path]
     case "node": prefix = ["/usr/bin/env", "node", item.path]
     default:
         guard item.interpreter.hasPrefix("/"), FileManager.default.isExecutableFile(atPath: item.interpreter) else {
-            throw RunnerError(message: "解释器必须是可执行文件的绝对路径。")
+            throw RunnerError(message: L("The interpreter must be an absolute path to an executable file."))
         }
         prefix = [item.interpreter, item.path]
     }

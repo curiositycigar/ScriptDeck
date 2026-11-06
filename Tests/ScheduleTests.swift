@@ -53,11 +53,15 @@ private final class TestScheduleService: ScheduleService {
 
     try service.installHelper()
     check(FileManager.default.isExecutableFile(atPath: service.helper.path), "后台执行器安装到 ScriptDeck 固定路径")
+    check(["en", "zh-hans"].allSatisfy {
+        FileManager.default.fileExists(atPath: service.helper.deletingLastPathComponent()
+            .appendingPathComponent("ScriptDeck_ScriptDeck.bundle/\($0).lproj/Localizable.strings").path)
+    }, "Standalone helper installation includes both language catalogs")
     check(service.label(task.id) == "com.lucasyou.ScriptDeck.schedule." + task.id, "系统任务使用 ScriptDeck 标识")
 
     func launch(_ task: ScheduledTask) throws -> Process {
         let process = Process()
-        process.executableURL = Bundle.main.executableURL
+        process.executableURL = service.helper
         process.arguments = ["--run-schedule", ScheduleFiles.definition(directory, task.id).path]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
@@ -154,7 +158,7 @@ private final class TestScheduleService: ScheduleService {
     try ScheduleFiles.write(missingTask, ScheduleFiles.definition(directory, missingTask.id))
     let missingProcess = try launch(missingTask); wait(missingProcess)
     let missingState = try ScheduleFiles.read(ScheduleRuntime.self, ScheduleFiles.runtime(directory, missingTask.id))
-    check(missingState.outcome == .launchFailed && missingState.message?.contains("找不到脚本") == true,
+    check(missingState.outcome == .launchFailed && missingState.message?.contains(L("Script not found: {0}", missingTask.item.path)) == true,
           "脚本丢失的后台启动失败会保存可见原因")
 
     let registry = root.appendingPathComponent("schedule-registry")

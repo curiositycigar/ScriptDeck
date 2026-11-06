@@ -17,10 +17,13 @@ swift build --package-path "$ROOT" \
     -Xswiftc -module-cache-path -Xswiftc "$ROOT/.build/module-cache"
 cp "$ROOT/.build/release/ScriptDeck" "$APP/Contents/MacOS/ScriptDeck"
 
+rm -rf "$APP/Contents/Resources/ScriptDeck_ScriptDeck.bundle"
+ditto "$ROOT/.build/release/ScriptDeck_ScriptDeck.bundle" "$APP/Contents/Resources/ScriptDeck_ScriptDeck.bundle"
+
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 
 cp "$ROOT/Resources/ThirdPartyNotices.txt" "$APP/Contents/Resources/ThirdPartyNotices.txt"
 cp "$ROOT/Resources/library.schema.json" "$APP/Contents/Resources/library.schema.json"
 rm -f "$APP/Contents/Resources/default-script-path.txt"
 codesign --force --sign - "$APP"
-printf '构建完成：%s\n' "$APP"
+printf 'Build complete: %s\n' "$APP"

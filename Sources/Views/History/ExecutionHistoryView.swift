@@ -22,7 +22,7 @@ struct ExecutionHistoryView: View {
         return model.entries.compactMap { entry in
             let key = workspaceKey(entry)
             guard seen.insert(key).inserted else { return nil }
-            return (key, entry.record.workspaceName.isEmpty ? "未指定 Workspace" : entry.record.workspaceName)
+            return (key, entry.record.workspaceName.isEmpty ? L("Unspecified Workspace") : entry.record.workspaceName)
         }
     }
     private var scriptChoices: [(id: String, name: String)] {
@@ -52,37 +52,37 @@ struct ExecutionHistoryView: View {
             HStack {
                 Image(systemName: "clock.arrow.circlepath").font(.title2).foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("执行历史").font(.title3.weight(.semibold))
-                    Text("浏览执行结果与保存在本地的完整日志").font(.callout).foregroundStyle(.secondary)
+                    Text(L("Execution History")).font(.title3.weight(.semibold))
+                    Text(L("Browse results and complete logs stored on this Mac")).font(.callout).foregroundStyle(.secondary)
                 }
                 Spacer()
                 if busy { ProgressView().controlSize(.small) }
                 Button {
                     if let selected { requestDeletion([selected], scope: .selected) }
-                } label: { Label("删除记录", systemImage: "trash") }
+                } label: { Label(L("Delete Record"), systemImage: "trash") }
                     .disabled(busy || selected == nil || runner.protectedHistoryRecordIDs.contains(selectedID ?? ""))
                 Menu {
-                    Button("清空筛选结果…", role: .destructive) { requestDeletion(filtered, scope: .filtered) }
+                    Button(L("Clear Filtered Results…"), role: .destructive) { requestDeletion(filtered, scope: .filtered) }
                         .disabled(deletable(filtered).isEmpty)
                     Divider()
-                    Button("清空全部历史…", role: .destructive) { requestDeletion(model.entries, scope: .all) }
+                    Button(L("Clear All History…"), role: .destructive) { requestDeletion(model.entries, scope: .all) }
                         .disabled(deletable(model.entries).isEmpty)
-                } label: { Label("清空", systemImage: "trash.slash") }
+                } label: { Label(L("Clear"), systemImage: "trash.slash") }
                     .disabled(busy || model.entries.isEmpty)
-                Button { Task { await refresh() } } label: { Label("刷新", systemImage: "arrow.clockwise") }
+                Button { Task { await refresh() } } label: { Label(L("Refresh"), systemImage: "arrow.clockwise") }
                     .disabled(busy)
-                Button("关闭") { dismiss() }.keyboardShortcut(.cancelAction).disabled(model.deleting)
+                Button(L("Close")) { dismiss() }.keyboardShortcut(.cancelAction).disabled(model.deleting)
             }.padding(20).background(.bar)
             HStack(spacing: 12) {
-                Picker("Workspace", selection: $workspaceFilter) {
-                    Text("所有 Workspaces").tag("")
+                Picker(L("Workspace"), selection: $workspaceFilter) {
+                    Text(L("All Workspaces")).tag("")
                     ForEach(workspaceChoices, id: \.id) { Text($0.name).tag($0.id) }
                 }.frame(maxWidth: 240)
-                Picker("脚本", selection: $scriptFilter) {
-                    Text("所有脚本").tag("")
+                Picker(L("Script"), selection: $scriptFilter) {
+                    Text(L("All Scripts")).tag("")
                     ForEach(scriptChoices, id: \.id) { Text($0.name).tag($0.id) }
                 }.frame(maxWidth: 260)
-                TextField("搜索脚本、Workspace 或路径", text: $search).textFieldStyle(.roundedBorder)
+                TextField(L("Search scripts, workspaces, or paths"), text: $search).textFieldStyle(.roundedBorder)
             }.padding(.horizontal, 20).padding(.vertical, 14).disabled(model.deleting)
             Divider()
             HSplitView {
@@ -90,7 +90,7 @@ struct ExecutionHistoryView: View {
                     ForEach(filtered) { entry in
                         historyRow(entry).tag(entry.id)
                             .contextMenu {
-                                Button("删除此记录…", role: .destructive) { requestDeletion([entry], scope: .selected) }
+                                Button(L("Delete This Record…"), role: .destructive) { requestDeletion([entry], scope: .selected) }
                                     .disabled(busy || runner.protectedHistoryRecordIDs.contains(entry.id))
                             }
                     }
@@ -107,8 +107,8 @@ struct ExecutionHistoryView: View {
                     if filtered.isEmpty && !model.loading {
                         VStack(spacing: 10) {
                             Image(systemName: "clock").font(.title).foregroundStyle(.tertiary)
-                            Text(model.entries.isEmpty ? "暂无执行记录" : "没有匹配的记录").font(.callout)
-                            if model.entries.isEmpty { Text("运行脚本后会自动保存日志").font(.caption) }
+                            Text(model.entries.isEmpty ? L("No execution records yet") : L("No matching records")).font(.callout)
+                            if model.entries.isEmpty { Text(L("Logs are saved automatically when you run a script")).font(.caption) }
                         }.foregroundStyle(.secondary).allowsHitTesting(false)
                     }
                 }
@@ -116,19 +116,19 @@ struct ExecutionHistoryView: View {
             }
             Divider()
             HStack {
-                Text("\(filtered.count) 条记录").foregroundStyle(.secondary)
+                Text(L("{0} records", "\(filtered.count)")).foregroundStyle(.secondary)
                 if let warning = model.warning { Text(warning).foregroundStyle(.orange).lineLimit(1).help(warning) }
                 Spacer()
-                Text("日志保存在各脚本目录的 logs/脚本文件名/ 中。") .foregroundStyle(.secondary)
+                Text(L("Logs are stored in logs/<script filename>/ beside each script.")) .foregroundStyle(.secondary)
             }.font(.caption).padding(.horizontal, 20).padding(.vertical, 10).background(.bar)
         }
         .frame(minWidth: 960, idealWidth: 1040, minHeight: 620, idealHeight: 700)
         .interactiveDismissDisabled(model.deleting)
-        .alert(deletionRequest?.title ?? "删除历史记录？", isPresented: Binding(
+        .alert(deletionRequest?.title ?? L("Delete History Records?"), isPresented: Binding(
             get: { deletionRequest != nil }, set: { if !$0 { deletionRequest = nil } }
         )) {
-            Button("取消", role: .cancel) { deletionRequest = nil }
-            Button("删除", role: .destructive) {
+            Button(L("Cancel"), role: .cancel) { deletionRequest = nil }
+            Button(L("Delete"), role: .destructive) {
                 guard let request = deletionRequest else { return }
                 deletionRequest = nil
                 Task {
@@ -137,10 +137,10 @@ struct ExecutionHistoryView: View {
                 }
             }
         } message: { Text(deletionRequest?.message ?? "") }
-        .alert("部分历史记录删除失败", isPresented: Binding(
+        .alert(L("Some History Records Could Not Be Deleted"), isPresented: Binding(
             get: { deletionError != nil }, set: { if !$0 { deletionError = nil } }
         )) {
-            Button("好", role: .cancel) { deletionError = nil }
+            Button(L("OK"), role: .cancel) { deletionError = nil }
         } message: { Text(deletionError ?? "") }
         .task {
             selectedID = runner.recordID
@@ -163,8 +163,8 @@ struct ExecutionHistoryView: View {
         guard !targets.isEmpty else { return }
         let criteria = [
             workspaceChoices.first { $0.id == workspaceFilter }.map { "Workspace：" + $0.name },
-            scriptChoices.first { $0.id == scriptFilter }.map { "脚本：" + $0.name },
-            search.isEmpty ? nil : "搜索：" + search
+            scriptChoices.first { $0.id == scriptFilter }.map { L("Script: ") + $0.name },
+            search.isEmpty ? nil : L("Search: ") + search
         ].compactMap { $0 }.joined(separator: "；")
         deletionRequest = HistoryDeletionRequest(entries: targets, scope: scope, criteria: criteria)
     }
@@ -183,11 +183,11 @@ struct ExecutionHistoryView: View {
                     .font(.caption.weight(.medium)).foregroundStyle(color).fixedSize()
             }
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Label(entry.record.workspaceName.isEmpty ? "未指定 Workspace" : entry.record.workspaceName,
+                Label(entry.record.workspaceName.isEmpty ? L("Unspecified Workspace") : entry.record.workspaceName,
                       systemImage: "folder")
                     .lineLimit(1).truncationMode(.middle).help(entry.record.workspaceName)
                 Spacer(minLength: 8)
-                Text(entry.record.startedAt.formatted(date: .numeric, time: .shortened))
+                Text(L10n.date(entry.record.startedAt, dateStyle: .short, timeStyle: .short))
                     .monospacedDigit().fixedSize()
             }.font(.caption).foregroundStyle(.secondary)
         }
@@ -206,20 +206,20 @@ struct ExecutionHistoryView: View {
                             .lineLimit(1).truncationMode(.middle).help(entry.record.scriptFile)
                     }
                     Spacer()
-                    Button("在 Finder 中显示") { NSWorkspace.shared.activateFileViewerSelecting([entry.logURL]) }
+                    Button(L("Show in Finder")) { NSWorkspace.shared.activateFileViewerSelecting([entry.logURL]) }
                 }
                 HStack(spacing: 14) {
                     Text(entry.status(activeRecordID: runner.activeRecordIDs.contains(entry.id) ? entry.id : nil))
-                    if let code = entry.record.exitCode { Text("退出码 \(code)") }
+                    if let code = entry.record.exitCode { Text(L("Exit code {0}", "\(code)")) }
                     if let end = entry.record.endedAt {
-                        Text("耗时 \(max(0, Int(end.timeIntervalSince(entry.record.startedAt)))) 秒")
+                        Text(L("Elapsed {0} seconds", "\(max(0, Int(end.timeIntervalSince(entry.record.startedAt))))"))
                     }
                     Spacer()
                 }.font(.caption).foregroundStyle(.secondary)
-                Text("开始：" + entry.record.startedAt.formatted(date: .complete, time: .standard))
+                Text(L("Started: ") + L10n.date(entry.record.startedAt, dateStyle: .full))
                     .font(.caption).foregroundStyle(.secondary)
                 if let end = entry.record.endedAt {
-                    Text("结束：" + end.formatted(date: .complete, time: .standard)).font(.caption).foregroundStyle(.secondary)
+                    Text(L("Ended: ") + L10n.date(end, dateStyle: .full)).font(.caption).foregroundStyle(.secondary)
                 }
                 if let issue = entry.record.logError { Text(issue).font(.caption).foregroundStyle(.orange).textSelection(.enabled) }
                 Divider()
@@ -227,7 +227,7 @@ struct ExecutionHistoryView: View {
                 if model.pageRecordID == entry.id, let page = model.page {
                     GeometryReader { geometry in
                         ScrollView([.vertical, .horizontal]) {
-                            Text(page.text.isEmpty ? "（暂无输出）" : page.text)
+                            Text(page.text.isEmpty ? L("(No output yet)") : page.text)
                                 .font(.system(size: 12, design: .monospaced)).textSelection(.enabled)
                                 .padding(12)
                                 .frame(minWidth: geometry.size.width, minHeight: geometry.size.height, alignment: .topLeading)
@@ -237,18 +237,18 @@ struct ExecutionHistoryView: View {
                     .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(.quaternary))
                     .id(entry.id + "-" + String(page.index))
                     HStack {
-                        Button("上一页") { Task { await model.load(entry, page: page.index - 1) } }.disabled(page.index == 0 || model.loadingPage)
-                        Text("第 \(page.index + 1) / \(page.total) 页").font(.caption).foregroundStyle(.secondary)
-                        Button("下一页") { Task { await model.load(entry, page: page.index + 1) } }.disabled(page.index + 1 == page.total || model.loadingPage)
+                        Button(L("Previous")) { Task { await model.load(entry, page: page.index - 1) } }.disabled(page.index == 0 || model.loadingPage)
+                        Text(L("Page {0} / {1}", "\(page.index + 1)", "\(page.total)")).font(.caption).foregroundStyle(.secondary)
+                        Button(L("Next")) { Task { await model.load(entry, page: page.index + 1) } }.disabled(page.index + 1 == page.total || model.loadingPage)
                         Spacer()
                         Text(ByteCountFormatter.string(fromByteCount: Int64(clamping: page.size), countStyle: .file)).font(.caption).foregroundStyle(.secondary)
-                        Button("打开完整日志") { NSWorkspace.shared.open(entry.logURL) }
+                        Button(L("Open Full Log")) { NSWorkspace.shared.open(entry.logURL) }
                     }
                 } else if model.loadingPage { ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity) }
                 else { Spacer() }
             }.padding(18)
         } else {
-            WorkspaceEmptyState(symbol: "doc.text.magnifyingglass", title: "执行日志", message: "选择左侧记录，查看执行结果、耗时和完整输出。")
+            WorkspaceEmptyState(symbol: "doc.text.magnifyingglass", title: L("Execution Log"), message: L("Select a record on the left to view its result, duration, and complete output."))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
@@ -274,18 +274,18 @@ private struct HistoryDeletionRequest {
 
     var title: String {
         switch scope {
-        case .selected: return "删除此执行记录？"
-        case .filtered: return "清空当前筛选结果？"
-        case .all: return "清空全部执行历史？"
+        case .selected: return L("Delete This Execution Record?")
+        case .filtered: return L("Clear Filtered Results?")
+        case .all: return L("Clear All Execution History?")
         }
     }
     var message: String {
         let range: String
         switch scope {
-        case .selected: range = "将删除“\(entries.first?.record.scriptName ?? "")”的这次执行记录。"
-        case .filtered: range = "将删除当前筛选结果中的 \(entries.count) 条记录。\n" + (criteria.isEmpty ? "当前未设置筛选条件。" : criteria)
-        case .all: range = "将删除所有 Workspace 中已加载的 \(entries.count) 条历史记录，不受当前筛选或搜索条件影响。"
+        case .selected: range = L("Delete this execution record for “{0}”.", "\(entries.first?.record.scriptName ?? "")")
+        case .filtered: range = L("Delete {0} records matching the current filters.\n", "\(entries.count)") + (criteria.isEmpty ? L("No filters are currently set.") : criteria)
+        case .all: range = L("Delete all {0} loaded history records across workspaces, regardless of current filters or search.", "\(entries.count)")
         }
-        return range + "\n\n对应的 .log 和 .json 文件将永久删除，无法撤销；脚本与配置文件保留。正在运行或正在保存日志的记录会跳过。暂不可用目录中的记录无法清理。"
+        return range + L("\n\nThe corresponding .log and .json files will be permanently deleted. Scripts and configuration files will be preserved. Running tasks and logs still being saved will be skipped. Records in unavailable folders cannot be removed.")
     }
 }

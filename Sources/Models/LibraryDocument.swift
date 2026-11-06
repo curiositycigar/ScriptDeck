@@ -26,40 +26,40 @@ struct LibraryDocument: Codable {
             guard !folder.isEmpty, folder.split(separator: "/", omittingEmptySubsequences: false).allSatisfy({
                 !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0 != "." && $0 != ".." && !$0.contains(where: { $0.isNewline || $0 == "\0" })
             }), paths.insert(folder).inserted else {
-                throw RunnerError(message: "文件夹路径为空、无效或重复：\(folder)")
+                throw RunnerError(message: L("Empty, invalid, or duplicate folder path: {0}", "\(folder)"))
             }
         }
-        guard version == 1 else { throw RunnerError(message: "不支持的配置版本：\(version)，当前支持 version: 1。") }
+        guard version == 1 else { throw RunnerError(message: L("Unsupported configuration version: {0}. Only version: 1 is supported.", "\(version)")) }
         var ids = Set<String>()
         for script in scripts {
             guard !script.id.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, ids.insert(script.id).inserted else {
-                throw RunnerError(message: "脚本 id 为空或重复：\(script.id)")
+                throw RunnerError(message: L("Empty or duplicate script id: {0}", "\(script.id)"))
             }
             guard !script.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !script.path.isEmpty else {
-                throw RunnerError(message: "脚本 \(script.id) 的 name 和 file 不能为空。")
+                throw RunnerError(message: L("Script {0} must have a name and file.", "\(script.id)"))
             }
-            guard !script.interpreter.isEmpty else { throw RunnerError(message: "脚本 \(script.id) 的 interpreter 不能为空。") }
+            guard !script.interpreter.isEmpty else { throw RunnerError(message: L("Script {0} must have an interpreter.", "\(script.id)")) }
             var argumentNames = Set<String>()
             var parameterIDs = Set<String>()
             for parameter in script.parameters {
-                let context = "脚本 \(script.name) 的参数 \(parameter.id)"
+                let context = L("Script {0}, parameter {1}", "\(script.name)", "\(parameter.id)")
                 guard !parameter.id.isEmpty, parameterIDs.insert(parameter.id).inserted, !parameter.name.isEmpty else {
-                    throw RunnerError(message: "\(context)：参数 id 为空、重复，或 label 为空。")
+                    throw RunnerError(message: L("{0}: parameter id is empty or duplicated, or label is empty.", "\(context)"))
                 }
                 if let issue = parameter.configurationIssue { throw RunnerError(message: "\(context)：\(issue)") }
                 if parameter.passing != .positional && !argumentNames.insert(parameter.argumentName).inserted {
-                    throw RunnerError(message: "\(context)：命名参数或开关名称重复。")
+                    throw RunnerError(message: L("{0}: duplicate named argument or flag name.", "\(context)"))
                 }
                 if parameter.kind == .select && parameter.passing != .flag {
-                    guard !parameter.options.isEmpty else { throw RunnerError(message: "\(context)：下拉参数必须配置 options。") }
+                    guard !parameter.options.isEmpty else { throw RunnerError(message: L("{0}: select parameters must define options.", "\(context)")) }
                     var values = Set<String>()
                     for option in parameter.options {
                         guard !option.value.isEmpty, !option.label.isEmpty, values.insert(option.value).inserted else {
-                            throw RunnerError(message: "\(context)：选项名称和传值不能为空，传值不能重复。")
+                            throw RunnerError(message: L("{0}: option labels and values must be nonempty, and values must be unique.", "\(context)"))
                         }
                     }
                     guard parameter.defaultValue.isEmpty || values.contains(parameter.defaultValue) else {
-                        throw RunnerError(message: "\(context)：default 必须匹配某个选项的 value。")
+                        throw RunnerError(message: L("{0}: default must match an option value.", "\(context)"))
                     }
                 }
             }

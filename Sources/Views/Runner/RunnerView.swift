@@ -42,7 +42,7 @@ struct RunnerView: View {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                     Text(issue).font(.caption).textSelection(.enabled)
                     Spacer()
-                    Button("重新加载") { store.reloadFromDisk(force: true) }
+                    Button(L("Reload")) { store.reloadFromDisk(force: true) }
                 }.padding(12).background(Color.orange.opacity(0.08))
             }
             GeometryReader { geometry in
@@ -52,20 +52,20 @@ struct RunnerView: View {
         }
         .background(Color(nsColor: .windowBackgroundColor))
         .frame(minWidth: preferences.sidebarVisible ? 820 : 680, minHeight: 280)
-        .navigationTitle(navigation.destination == .schedules ? "定时任务" : selected?.name ?? workspaceInfo.name)
+        .navigationTitle(navigation.destination == .schedules ? L("Scheduled Tasks") : selected?.name ?? workspaceInfo.name)
         .navigationSubtitle(workspaceInfo.name)
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 Button { preferences.sidebarVisible.toggle() } label: { Image(systemName: "sidebar.left") }
-                    .help(preferences.sidebarVisible ? "隐藏侧栏" : "显示侧栏")
-                    .accessibilityLabel(preferences.sidebarVisible ? "隐藏侧栏" : "显示侧栏")
+                    .help(preferences.sidebarVisible ? L("Hide Sidebar") : L("Show Sidebar"))
+                    .accessibilityLabel(preferences.sidebarVisible ? L("Hide Sidebar") : L("Show Sidebar"))
                 if !preferences.sidebarVisible { workspaceMenu.frame(maxWidth: 220) }
             }
             ToolbarItemGroup {
-                Button(action: importScripts) { Label("导入脚本", systemImage: "square.and.arrow.down") }
-                    .help("导入本地脚本（⌘I）")
+                Button(action: importScripts) { Label(L("Import Scripts"), systemImage: "square.and.arrow.down") }
+                    .help(L("Import local scripts (⌘I)"))
                     .disabled(store.directoryURL == nil || store.configurationIssue != nil)
-                Button { openEditor(ScriptItem()) } label: { Label("新增脚本", systemImage: "plus") }
+                Button { openEditor(ScriptItem()) } label: { Label(L("New Script"), systemImage: "plus") }
                     .disabled(store.directoryURL == nil || store.configurationIssue != nil)
             }
             ToolbarItem(placement: .automatic) { libraryMenu }
@@ -92,27 +92,27 @@ struct RunnerView: View {
         .sheet(item: $schedulingItem) { task in
             ScheduleEditor(workspaces: workspaces, initial: task) { try schedules.save($0) }
         }
-        .alert("删除文件夹？", isPresented: Binding(get: { deletingFolder != nil }, set: { if !$0 { deletingFolder = nil } })) {
-            Button("取消", role: .cancel) { deletingFolder = nil }
-            Button("删除文件夹", role: .destructive) {
+        .alert(L("Delete Folder?"), isPresented: Binding(get: { deletingFolder != nil }, set: { if !$0 { deletingFolder = nil } })) {
+            Button(L("Cancel"), role: .cancel) { deletingFolder = nil }
+            Button(L("Delete Folder"), role: .destructive) {
                 if let path = deletingFolder { _ = store.removeFolder(path, expectedRevision: folderRevision) }
                 deletingFolder = nil
             }
         } message: {
             let path = deletingFolder ?? ""
             let count = store.items.filter { ScriptGroup.contains($0.category, in: path) }.count
-            Text("将删除“\(path)”及其子文件夹，其中 \(count) 个脚本会移到“未分组”。脚本配置、本地文件和执行历史均会保留。")
+            Text(L("Delete “{0}” and its subfolders, moving {1} scripts to “Ungrouped”. Script configurations, local files, and execution history will be preserved.", "\(path)", "\(count)"))
         }
-        .alert("操作失败", isPresented: Binding(get: { error != nil || store.error != nil }, set: { if !$0 { error = nil; store.error = nil } })) {
-            Button("好", role: .cancel) { error = nil; store.error = nil }
+        .alert(L("Operation Failed"), isPresented: Binding(get: { error != nil || store.error != nil }, set: { if !$0 { error = nil; store.error = nil } })) {
+            Button(L("OK"), role: .cancel) { error = nil; store.error = nil }
         } message: { Text(error ?? store.error ?? "") }
-        .alert("从脚本库移除？", isPresented: Binding(get: { deleteItem != nil }, set: { if !$0 { deleteItem = nil } })) {
-            Button("取消", role: .cancel) { deleteItem = nil }
-            Button("移除", role: .destructive) {
+        .alert(L("Remove from Library?"), isPresented: Binding(get: { deleteItem != nil }, set: { if !$0 { deleteItem = nil } })) {
+            Button(L("Cancel"), role: .cancel) { deleteItem = nil }
+            Button(L("Remove"), role: .destructive) {
                 if let item = deleteItem { store.remove(item.id); if session.selectedID == item.id { session.selectedID = store.items.first?.id } }
                 deleteItem = nil
             }
-        } message: { Text("仅移除应用中的配置，本地脚本文件会保留。") }
+        } message: { Text(L("Only the configuration will be removed. Local script files will be preserved.")) }
         .onAppear { reconcileParameters() }
         .onChange(of: store.revision) { _ in reconcileParameters() }
     }

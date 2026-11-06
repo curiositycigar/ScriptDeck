@@ -13,17 +13,17 @@ struct ScheduleDashboard: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("定时任务").font(.title2.bold())
-                    Text("由 macOS 后台执行，退出 App 后仍然有效。")
+                    Text(L("Scheduled Tasks")).font(.title2.bold())
+                    Text(L("Runs in the macOS background, even after you quit the app."))
                         .font(.callout).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button { creating = true } label: { Label("新建定时任务", systemImage: "plus") }
+                Button { creating = true } label: { Label(L("New Scheduled Task"), systemImage: "plus") }
                     .disabled(workspaces.items.isEmpty)
             }
             if schedules.tasks.isEmpty {
-                WorkspaceEmptyState(symbol: "calendar.badge.clock", title: "还没有定时任务",
-                                    message: "选择 Workspace 和脚本，设置一次性时间或重复周期。也可从脚本运行栏创建，保存当前参数。")
+                WorkspaceEmptyState(symbol: "calendar.badge.clock", title: L("No scheduled tasks yet"),
+                                    message: L("Choose a workspace and script, then set a time or repeat interval. You can also create a schedule from the script's run bar to save its current parameters."))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
             } else {
                 ScrollView {
@@ -32,26 +32,26 @@ struct ScheduleDashboard: View {
                     }
                 }
             }
-            Text("电脑需开机且用户已登录；休眠期间不执行，恢复后最多补执行一次。同一定时任务不会重叠运行。后台任务不支持键盘交互。")
+            Text(L("Your Mac must be on and you must be logged in. Tasks do not run during sleep; at most one missed run is caught up afterward. Each schedule prevents overlapping runs. Background tasks do not support keyboard input."))
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(nsColor: .windowBackgroundColor))
-        .navigationTitle("定时任务")
+        .navigationTitle(L("Scheduled Tasks"))
         .sheet(isPresented: $creating) {
             ScheduleEditor(workspaces: workspaces, initial: nil) { try schedules.save($0) }
         }
         .sheet(item: $editing) { task in
             ScheduleEditor(workspaces: workspaces, initial: task) { try schedules.save($0) }
         }
-        .alert("删除定时任务？", isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
-            Button("取消", role: .cancel) { deleting = nil }
-            Button("删除", role: .destructive) {
+        .alert(L("Delete Scheduled Task?"), isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } })) {
+            Button(L("Cancel"), role: .cancel) { deleting = nil }
+            Button(L("Delete"), role: .destructive) {
                 if let task = deleting { schedules.perform { try schedules.remove(task) } }
                 deleting = nil
             }
-        } message: { Text("移除系统定时配置，已生成的执行历史和日志会保留。") }
+        } message: { Text(L("Remove this system schedule. Existing execution history and logs will be preserved.")) }
     }
     private func taskRow(_ task: ScheduledTask) -> some View {
         let state = schedules.state(for: task)
@@ -63,37 +63,37 @@ struct ScheduleDashboard: View {
                     .foregroundStyle(running ? Color.orange : Color.secondary)
                 Text(task.name).font(.headline).lineLimit(1)
                 Spacer()
-                Text(running ? "执行中" : !task.enabled ? "已暂停" : completed ? "已触发" : "已启用")
+                Text(running ? L("Executing") : !task.enabled ? L("Paused") : completed ? L("Triggered") : L("Enabled"))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Text("\(task.workspaceName) · \(task.item.name) · \(task.summary)")
                 .font(.callout).foregroundStyle(.secondary)
             if task.enabled, let next = state?.nextFireAt {
-                Text("下次：\(next.formatted(date: .numeric, time: .shortened))").font(.caption)
+                Text(L("Next: {0}", "\(L10n.date(next, dateStyle: .short, timeStyle: .short))")).font(.caption)
             }
             if let started = state?.startedAt {
-                Text("最近：\(started.formatted(date: .numeric, time: .standard)) · \(state?.message ?? state?.outcome?.title ?? "")")
+                Text(L("Last: {0} · {1}", "\(L10n.date(started, dateStyle: .short))", "\(state?.message ?? state?.outcome?.title ?? "")"))
                     .font(.caption).foregroundStyle(state?.outcome == .launchFailed || state?.outcome == .failed ? Color.red : Color.secondary)
                     .textSelection(.enabled)
             }
             if let issue = schedules.issue(for: task) { Text(issue).font(.caption).foregroundStyle(.red) }
             HStack {
-                Button("编辑") { editing = task }.disabled(running)
-                Button(task.enabled ? "暂停" : "启用") {
+                Button(L("Edit")) { editing = task }.disabled(running)
+                Button(task.enabled ? L("Pause") : L("Enable")) {
                     schedules.perform { try schedules.setEnabled(task, !task.enabled) }
                 }.disabled(!task.enabled && completed)
-                    .help("暂停只影响后续计划，当前运行继续；已触发的一次性任务需编辑新的执行时间。")
+                    .help(L("Pausing affects future runs only. Edit a triggered one-time task to set a new execution time."))
                 if running {
-                    Button("查看输出") {
+                    Button(L("View Output")) {
                         if let id = runner.sessions.first(where: { $0.recordID == state?.runID })?.id { runner.select(id); showOutput() }
                     }
-                    Button("停止") {
+                    Button(L("Stop")) {
                         runner.sessions.first(where: { $0.recordID == state?.runID })?.stop()
                     }
                 }
                 Spacer()
                 Button(role: .destructive) { deleting = task } label: { Image(systemName: "trash") }
-                    .disabled(running).help("删除定时任务")
+                    .disabled(running).help(L("Delete Scheduled Task"))
             }.controlSize(.small)
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
@@ -121,52 +121,52 @@ struct ScheduleEditor: View {
     private var item: ScriptItem? { initial?.item ?? items.first { $0.id == scriptID } }
     var body: some View {
         VStack(spacing: 0) {
-            HStack { Text(initial == nil ? "新建定时任务" : "配置定时任务").font(.title2.bold()); Spacer() }.padding(24)
+            HStack { Text(initial == nil ? L("New Scheduled Task") : L("Configure Scheduled Task")).font(.title2.bold()); Spacer() }.padding(24)
             Form {
-                Section("执行内容") {
-                    TextField("任务名称", text: $name)
+                Section(L("Task")) {
+                    TextField(L("Task Name"), text: $name)
                     if let initial {
-                        LabeledContent("Workspace", value: initial.workspaceName)
-                        LabeledContent("脚本", value: initial.item.name)
+                        LabeledContent(L("Workspace"), value: initial.workspaceName)
+                        LabeledContent(L("Script"), value: initial.item.name)
                     } else {
-                        Picker("Workspace", selection: $workspaceID) {
+                        Picker(L("Workspace"), selection: $workspaceID) {
                             ForEach(workspaces.items) { Text($0.name).tag($0.id) }
                         }.onChange(of: workspaceID) { _ in selectFirstScript() }
-                        Picker("脚本", selection: $scriptID) {
+                        Picker(L("Script"), selection: $scriptID) {
                             ForEach(items) { Text($0.name).tag($0.id) }
                         }.onChange(of: scriptID) { _ in values = [:]; if let item { name = item.name } }
                     }
                 }
-                Section("执行时间") {
-                    Picker("类型", selection: $kind) { ForEach(ScheduleKind.allCases) { Text($0.title).tag($0) } }
+                Section(L("Execution Time")) {
+                    Picker(L("Type"), selection: $kind) { ForEach(ScheduleKind.allCases) { Text($0.title).tag($0) } }
                     if kind == .interval {
-                        Stepper("每 \(minutes) 分钟", value: $minutes, in: 1...525600)
-                        TextField("间隔（分钟）", value: $minutes, format: .number)
+                        Stepper(L("Every {0} minutes", "\(minutes)"), value: $minutes, in: 1...525600)
+                        TextField(L("Interval (minutes)"), value: $minutes, format: .number)
                     } else {
-                        DatePicker(kind == .once ? "日期与时刻" : "执行时刻", selection: $date,
+                        DatePicker(kind == .once ? L("Date and Time") : L("Time"), selection: $date,
                                    displayedComponents: kind == .once ? [.date, .hourAndMinute] : [.hourAndMinute])
                         if kind == .weekly {
-                            Picker("星期", selection: $weekday) {
-                                ForEach(1...7, id: \.self) { Text("周\(["日", "一", "二", "三", "四", "五", "六"][$0 - 1])").tag($0) }
+                            Picker(L("Weekday"), selection: $weekday) {
+                                ForEach(1...7, id: \.self) { Text(L10n.weekday($0)).tag($0) }
                             }
                         }
                     }
                 }
                 if let item, !item.parameters.isEmpty {
-                    Section("保存的运行参数") {
+                    Section(L("Saved Parameters")) {
                         ForEach(item.parameters) { parameter in
                             if parameter.passing == .flag {
                                 Toggle(parameter.name, isOn: Binding(get: { value(parameter) == "true" }, set: { values[parameter.id] = $0 ? "true" : "false" }))
                             } else if parameter.kind == .select {
                                 Picker(parameter.name, selection: binding(parameter)) {
-                                    Text("请选择").tag("")
+                                    Text(L("Choose an option")).tag("")
                                     ForEach(parameter.options) { Text($0.label).tag($0.value) }
                                 }
                             } else {
                                 HStack {
                                     TextField(parameter.name + (parameter.required ? " *" : ""), text: binding(parameter))
                                     if parameter.kind == .file || parameter.kind == .folder {
-                                        Button("选择…") {
+                                        Button(L("Choose…")) {
                                             choosePath(directory: parameter.kind == .folder) { values[parameter.id] = $0 }
                                         }
                                     }
@@ -176,15 +176,15 @@ struct ScheduleEditor: View {
                     }
                 }
                 Section {
-                    Text("保存脚本配置与参数快照，之后修改脚本配置不会自动改变此任务。参数仅保存在本机；请避免填写密码。脚本必须能在无人输入的情况下执行。")
+                    Text(L("Saves a snapshot of the script configuration and parameters. Later script configuration changes do not update this task. Parameters stay on this Mac; avoid passwords. The script must run without user input."))
                         .font(.caption).foregroundStyle(.secondary)
                     if let error { Text(error).foregroundStyle(.red).textSelection(.enabled) }
                 }
             }.formStyle(.grouped)
             HStack {
                 Spacer()
-                Button("取消", role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("保存并启用") { commit() }.keyboardShortcut(.defaultAction).disabled(item == nil)
+                Button(L("Cancel"), role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(L("Save and Enable")) { commit() }.keyboardShortcut(.defaultAction).disabled(item == nil)
             }.padding(20)
         }.frame(width: 580, height: 650)
         .onAppear {

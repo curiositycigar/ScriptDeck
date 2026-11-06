@@ -10,7 +10,7 @@ extension RunnerView {
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
-        panel.message = "选择本地脚本；库外文件会复制到 scripts 文件夹，不会执行脚本。"
+        panel.message = L("Choose local scripts. Files outside the library will be copied into scripts; nothing will be executed.")
         panel.begin { result in if result == .OK, let id = store.importURLs(panel.urls) { navigation.selectScript(id, in: session) } }
     }
     func suppliedValues(for item: ScriptItem) -> [String: String] {

@@ -20,7 +20,7 @@ final class ScriptStore: ObservableObject {
             do { try open(URL(fileURLWithPath: saved), remember: false) }
             catch {
                 directoryURL = URL(fileURLWithPath: saved).standardizedFileURL.resolvingSymlinksInPath()
-                configurationIssue = "无法加载上次的脚本库。可修复 library.json 或重新选择目录。\n\(configurationError(error))"
+                configurationIssue = L("Unable to load the previous script library. Fix library.json or select another folder.\n{0}", "\(configurationError(error))")
             }
         }
         monitor = Timer(timeInterval: 0.8, repeats: true) { [weak self] _ in self?.reloadFromDisk() }
@@ -40,7 +40,7 @@ final class ScriptStore: ObservableObject {
             revision += 1
         }
         do { try open(directory, remember: false) }
-        catch { configurationIssue = "无法加载此 Workspace。请修复配置或重新定位目录。\n\(configurationError(error))" }
+        catch { configurationIssue = L("Unable to load this workspace. Fix its configuration or relocate the folder.\n{0}", "\(configurationError(error))") }
     }
 
     func open(_ directory: URL, remember: Bool = true) throws {
@@ -61,7 +61,7 @@ final class ScriptStore: ObservableObject {
         let directory = directory.standardizedFileURL.resolvingSymlinksInPath()
         let configuration = directory.appendingPathComponent("library.json")
         guard !FileManager.default.fileExists(atPath: configuration.path) else {
-            throw RunnerError(message: "该目录已有 library.json，请直接打开，不会覆盖已有配置。")
+            throw RunnerError(message: L("This folder already contains library.json. Open it directly to preserve its configuration."))
         }
         try FileManager.default.createDirectory(at: directory.appendingPathComponent("scripts"), withIntermediateDirectories: true)
         let data = try encode(LibraryDocument(scripts: []))
@@ -88,7 +88,7 @@ final class ScriptStore: ObservableObject {
             }
             configurationIssue = nil
         } catch {
-            configurationIssue = "library.json 无法加载；继续显示上一份有效配置。\n\(configurationError(error))"
+            configurationIssue = L("Unable to load library.json; showing the last valid configuration.\n{0}", "\(configurationError(error))")
         }
     }
 
@@ -136,13 +136,13 @@ final class ScriptStore: ObservableObject {
         return try encoder.encode(document)
     }
     private func currentFileUnchanged(expectedRevision: Int? = nil) throws {
-        guard let fileURL else { throw RunnerError(message: "请先打开或初始化一个脚本库目录。") }
+        guard let fileURL else { throw RunnerError(message: L("Open or initialize a script library first.")) }
         if let expectedRevision, expectedRevision != revision {
-            throw RunnerError(message: "脚本库已被外部修改。请取消编辑并重新打开配置，避免覆盖新内容。")
+            throw RunnerError(message: L("The library was modified externally. Cancel and reopen the editor to avoid overwriting newer changes."))
         }
         guard configurationIssue == nil, try Data(contentsOf: fileURL) == loadedData else {
             reloadFromDisk(force: true)
-            throw RunnerError(message: "library.json 已变化或无法读取。请先处理配置提示后重试，原文件未覆盖。")
+            throw RunnerError(message: L("library.json has changed or cannot be read. Resolve the configuration issue and try again. The original file was preserved."))
         }
     }
     @discardableResult
@@ -160,7 +160,7 @@ final class ScriptStore: ObservableObject {
             configurationIssue = nil
             revision += 1
             return true
-        } catch { self.error = "保存失败：\(configurationError(error))"; return false }
+        } catch { self.error = L("Unable to save: {0}", "\(configurationError(error))"); return false }
     }
     @discardableResult
     func upsert(_ item: ScriptItem, expectedRevision: Int? = nil) -> Bool {
@@ -176,13 +176,13 @@ final class ScriptStore: ObservableObject {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, name != ".", name != "..", !name.contains("/"),
               !name.contains(where: { $0.isNewline || $0 == "\0" }) else {
-            error = "文件夹名称不能为空，不能包含 /、换行，也不能为 . 或 ..。"
+            error = L("A folder name cannot be empty, contain / or newlines, or be . or ...")
             return false
         }
         let path = parent.isEmpty ? name : parent + "/" + name
         let existing = Set(folders + items.map { $0.category.isEmpty ? "未分组" : $0.category })
         guard !existing.contains(where: { $0 == path || $0.hasPrefix(path + "/") }) else {
-            error = "此位置已有同名文件夹。"
+            error = L("A folder with this name already exists here.")
             return false
         }
         return persist(items, folders: folders + [path], expectedRevision: expectedRevision)
@@ -190,7 +190,7 @@ final class ScriptStore: ObservableObject {
 
     @discardableResult
     func removeFolder(_ path: String, expectedRevision: Int? = nil) -> Bool {
-        guard path != "未分组" else { error = "“未分组”用于存放没有文件夹的脚本，不能删除。"; return false }
+        guard path != "未分组" else { error = L("“Ungrouped” holds scripts without a folder and cannot be deleted."); return false }
         // Retain empty ancestors even when the deleted child was their only content.
         let parts = path.split(separator: "/").map(String.init)
         let ancestors = (1..<max(1, parts.count)).map { parts.prefix($0).joined(separator: "/") }
@@ -237,6 +237,6 @@ final class ScriptStore: ObservableObject {
                 firstID = firstID ?? item.id
             }
             return persist(proposed) ? firstID : nil
-        } catch { self.error = "导入失败：\(configurationError(error))"; return nil }
+        } catch { self.error = L("Unable to import: {0}", "\(configurationError(error))"); return nil }
     }
 }

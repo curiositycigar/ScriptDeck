@@ -41,10 +41,10 @@ final class ScheduleStore: ObservableObject {
                 do {
                     let task = try ScheduleFiles.read(ScheduledTask.self, url)
                     guard UUID(uuidString: task.id) != nil, url.lastPathComponent == task.id + ".json" else {
-                        throw RunnerError(message: "定时任务 ID 与文件名不一致。")
+                        throw RunnerError(message: L("The schedule ID does not match its filename."))
                     }
                     tasks.append(task)
-                } catch { self.error = "部分定时任务无法读取，原文件已保留：\(error.localizedDescription)" }
+                } catch { self.error = L("Some schedules could not be read. Their files were preserved: {0}", "\(error.localizedDescription)") }
             }
             tasks.sort { $0.createdAt < $1.createdAt }
         } catch { self.error = error.localizedDescription }
@@ -86,7 +86,7 @@ final class ScheduleStore: ObservableObject {
                 snapshot = try ScheduleFiles.snapshot(root: root, id: task.id)
                 runtimeErrors[task.id] = nil
             } catch {
-                runtimeErrors[task.id] = "无法读取执行状态，请编辑任务重新保存：\(error.localizedDescription)"
+                runtimeErrors[task.id] = L("Unable to read execution state. Edit and save the task again: {0}", "\(error.localizedDescription)")
                 continue
             }
             let state = snapshot.state
@@ -105,8 +105,8 @@ final class ScheduleStore: ObservableObject {
         runningIDs = running
     }
     func save(_ input: ScheduledTask) throws {
-        guard UUID(uuidString: input.id) != nil else { throw RunnerError(message: "定时任务 ID 无效。") }
-        guard !ScheduleFiles.isRunning(root: root, id: input.id) else { throw RunnerError(message: "请先结束此定时任务，再修改配置。") }
+        guard UUID(uuidString: input.id) != nil else { throw RunnerError(message: L("Invalid schedule ID.")) }
+        guard !ScheduleFiles.isRunning(root: root, id: input.id) else { throw RunnerError(message: L("Wait for this scheduled task to finish before editing it.")) }
         var task = input
         task.revision = UUID().uuidString
         task.createdAt = Date()
@@ -119,7 +119,7 @@ final class ScheduleStore: ObservableObject {
         if var old { old.enabled = false; try ScheduleFiles.write(old, ScheduleFiles.definition(root, old.id)) }
         if ScheduleFiles.isRunning(root: root, id: task.id) {
             if let old { try? ScheduleFiles.write(old, ScheduleFiles.definition(root, old.id)) }
-            throw RunnerError(message: "任务刚刚启动，请结束后重试。")
+            throw RunnerError(message: L("The task just started. Wait for it to finish and try again."))
         }
         do {
             try service.unregister(task.id)
@@ -143,7 +143,7 @@ final class ScheduleStore: ObservableObject {
                         paused.enabled = false
                         try? ScheduleFiles.write(paused, ScheduleFiles.definition(root, old.id))
                         if let index = tasks.firstIndex(where: { $0.id == old.id }) { tasks[index] = paused }
-                        registrationErrors[old.id] = "系统注册恢复失败，已暂停：\(error.localizedDescription)"
+                        registrationErrors[old.id] = L("Unable to restore system registration; paused: {0}", "\(error.localizedDescription)")
                     }
                 }
             } else {
@@ -180,9 +180,9 @@ final class ScheduleStore: ObservableObject {
         }
     }
     func remove(_ task: ScheduledTask) throws {
-        guard !ScheduleFiles.isRunning(root: root, id: task.id) else { throw RunnerError(message: "请先停止任务再删除。") }
+        guard !ScheduleFiles.isRunning(root: root, id: task.id) else { throw RunnerError(message: L("Stop the task before deleting it.")) }
         try setEnabled(task, false)
-        guard !ScheduleFiles.isRunning(root: root, id: task.id) else { throw RunnerError(message: "任务刚刚启动，请停止后重试。") }
+        guard !ScheduleFiles.isRunning(root: root, id: task.id) else { throw RunnerError(message: L("The task just started. Stop it and try again.")) }
         try service.unregister(task.id)
         try FileManager.default.removeItem(at: ScheduleFiles.definition(root, task.id))
         tasks.removeAll { $0.id == task.id }

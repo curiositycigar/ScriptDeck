@@ -1,13 +1,20 @@
 import Foundation
 import Combine
 
-enum SettingsTab: Hashable { case workspaces, terminal }
+enum SettingsTab: Hashable { case general, workspaces, terminal }
 
 final class AppPreferences: ObservableObject {
+    @Published var language: AppLanguage {
+        didSet {
+            preferences.set(language.rawValue, forKey: "appLanguage")
+            if language == .system { preferences.removeObject(forKey: "AppleLanguages") }
+            else { preferences.set([language.rawValue], forKey: "AppleLanguages") }
+        }
+    }
     @Published var sidebarVisible: Bool {
         didSet { preferences.set(sidebarVisible, forKey: "sidebarVisible") }
     }
-    @Published var settingsTab: SettingsTab = .workspaces
+    @Published var settingsTab: SettingsTab = .general
     @Published var terminalFontSize: Double {
         didSet { preferences.set(terminalFontSize, forKey: "terminalFontSize") }
     }
@@ -19,6 +26,7 @@ final class AppPreferences: ObservableObject {
 
     init(preferences: UserDefaults = .standard) {
         self.preferences = preferences
+        language = AppLanguage(rawValue: preferences.string(forKey: "appLanguage") ?? "") ?? .system
         sidebarVisible = preferences.object(forKey: "sidebarVisible") as? Bool ?? true
         let font = preferences.object(forKey: "terminalFontSize") as? Double ?? 12
         terminalFontSize = font.isFinite ? min(24, max(10, font)) : 12

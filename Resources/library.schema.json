@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "本地脚本库配置",
+  "title": "Script Library Configuration",
   "type": "object",
   "required": [
     "version",
@@ -22,7 +22,7 @@
     },
     "folders": {
       "type": "array",
-      "description": "侧栏文件夹路径，使用 / 分隔层级；支持空文件夹",
+      "description": "Sidebar folder paths, separated by /; empty folders are supported",
       "uniqueItems": true,
       "items": {
         "type": "string",
@@ -201,12 +201,11 @@
         "file": {
           "type": "string",
           "minLength": 1,
-          "description": "相对于脚本库目录的路径，也可使用绝对路径"
+          "description": "Path relative to the library folder, or an absolute path"
         },
         "group": {
           "type": "string",
-          "description": "用 / 分隔多级分组",
-          "default": "未分组"
+          "description": "Separate nested groups with /. Omit to use the localized Ungrouped group."
         },
         "description": {
           "type": "string"
@@ -215,11 +214,11 @@
           "type": "string",
           "minLength": 1,
           "default": "/bin/bash",
-          "description": "/bin/bash、/bin/zsh、python3、node、direct，或自定义解释器绝对路径"
+          "description": "/bin/bash, /bin/zsh, python3, node, direct, or an absolute interpreter path"
         },
         "cwd": {
           "type": "string",
-          "description": "相对于脚本库目录，省略则使用脚本所在目录"
+          "description": "Relative to the library folder; defaults to the script folder when omitted"
         },
         "execution": {
           "enum": [
@@ -227,7 +226,7 @@
             "terminal"
           ],
           "deprecated": true,
-          "description": "兼容旧配置；所有脚本统一在应用内交互终端运行，此字段不再影响执行。"
+          "description": "Deprecated compatibility field. All manual scripts use the embedded interactive terminal; this field no longer affects execution."
         },
         "parameters": {
           "type": "array",

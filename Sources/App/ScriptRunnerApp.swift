@@ -19,7 +19,8 @@ struct ScriptRunnerApp: App {
 
     var body: some Scene {
         Window("ScriptDeck", id: "main") {
-            WorkspaceRootView(workspaces: workspaces, preferences: preferences, runner: runner, schedules: schedules).onAppear {
+            WorkspaceRootView(workspaces: workspaces, preferences: preferences, runner: runner, schedules: schedules)
+                .environment(\.locale, L10n.locale).onAppear {
                 delegate.runner = runner
                 schedules.refresh()
                 DispatchQueue.main.async { delegate.configureMainWindow(NSApp.keyWindow ?? NSApp.windows.first) }
@@ -30,15 +31,15 @@ struct ScriptRunnerApp: App {
         .commands { RunnerCommands(workspaces: workspaces, runner: runner) }
 
         MenuBarExtra {
-            RunnerMenuBarView(runner: runner, schedules: schedules)
+            RunnerMenuBarView(runner: runner, schedules: schedules).environment(\.locale, L10n.locale)
         } label: {
             Label(runner.isRunning ? "\(runner.runningSessions.count)" : "",
                   systemImage: runner.isRunning ? "play.circle.fill" : "terminal")
-                .accessibilityLabel(runner.isRunning ? "\(runner.runningSessions.count) 个任务运行中" : "ScriptDeck，空闲")
+                .accessibilityLabel(runner.isRunning ? L("{0} tasks running", "\(runner.runningSessions.count)") : L("ScriptDeck, idle"))
         }
 
-        Window("设置", id: "settings") {
-            AppSettingsView(workspaces: workspaces, preferences: preferences, runner: runner)
+        Window(L("Settings"), id: "settings") {
+            AppSettingsView(workspaces: workspaces, preferences: preferences, runner: runner).environment(\.locale, L10n.locale)
         }
         .windowResizability(.contentSize)
     }

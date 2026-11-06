@@ -2,8 +2,8 @@ import Foundation
 
 struct ScriptItem: Codable, Identifiable, Equatable {
     var id = UUID().uuidString
-    var name = "新脚本"
-    var category = "常用"
+    var name = L("New Script")
+    var category = L("Favorites")
     var path = ""
     var interpreter = "/bin/bash"
     var workingDirectory = ""

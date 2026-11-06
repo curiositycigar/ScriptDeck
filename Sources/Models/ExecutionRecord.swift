@@ -4,11 +4,11 @@ enum ExecutionOutcome: String, Codable {
     case running, succeeded, failed, stopped, launchFailed
     var title: String {
         switch self {
-        case .running: return "运行中"
-        case .succeeded: return "成功"
-        case .failed: return "失败"
-        case .stopped: return "已停止"
-        case .launchFailed: return "启动失败"
+        case .running: return L("Running")
+        case .succeeded: return L("Succeeded")
+        case .failed: return L("Failed")
+        case .stopped: return L("Stopped")
+        case .launchFailed: return L("Failed to start")
         }
     }
 }
@@ -35,6 +35,6 @@ struct HistoryEntry: Identifiable {
     var id: String { record.id }
     var logURL: URL { metadataURL.deletingLastPathComponent().appendingPathComponent(record.logFilename) }
     func status(activeRecordID: String?) -> String {
-        record.outcome == .running && id != activeRecordID ? "未正常结束" : record.outcome.title
+        record.outcome == .running && id != activeRecordID ? L("Ended unexpectedly") : record.outcome.title
     }
 }

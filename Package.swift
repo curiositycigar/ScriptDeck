@@ -13,6 +13,7 @@ let excludedPaths = ["Assets", "Docs", "ExampleLibrary", "Resources", "Scripts",
 
 let package = Package(
     name: "ScriptDeck",
+    defaultLocalization: "en",
     platforms: [.macOS(.v13)],
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.99.2", traits: [])
@@ -24,6 +25,7 @@ let package = Package(
             path: ".",
             exclude: excludedPaths + (selfChecks ? [] : ["Tests"]),
             sources: selfChecks ? ["Sources", "Tests"] : ["Sources"],
+            resources: [.process("Localization")],
             swiftSettings: [.swiftLanguageMode(.v5)] + (selfChecks ? [.define("SELF_TEST")] : [])
         )
     ]

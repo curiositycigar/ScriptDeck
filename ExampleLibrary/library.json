@@ -3,28 +3,28 @@
   "scripts": [
     {
       "cwd": ".",
-      "description": "演示选项名称与脚本传值分离。只输出所选参数，不连接服务器，也不修改文件。",
+      "description": "Demonstrates separate option labels and values. Only prints selected arguments; does not connect to servers or change files.",
       "file": "scripts/show-options.sh",
-      "group": "示例/参数",
+      "group": "Examples/Parameters",
       "id": "options-demo",
       "interpreter": "/bin/bash",
-      "name": "下拉参数演示",
+      "name": "Selection Parameters Demo",
       "parameters": [
         {
           "default": "development",
           "id": "environment",
-          "label": "目标环境",
+          "label": "Environment",
           "options": [
             {
-              "label": "开发环境",
+              "label": "Development",
               "value": "development"
             },
             {
-              "label": "预发布环境",
+              "label": "Staging",
               "value": "staging"
             },
             {
-              "label": "生产环境",
+              "label": "Production",
               "value": "production"
             }
           ],
@@ -34,7 +34,7 @@
         {
           "default": "preview",
           "id": "mode",
-          "label": "运行模式",
+          "label": "Mode",
           "options": [
             {
               "label": "preview",
@@ -50,8 +50,8 @@
         },
         {
           "id": "note",
-          "label": "备注",
-          "placeholder": "可留空，试试输入含空格的内容",
+          "label": "Note",
+          "placeholder": "Optional; try a value containing spaces",
           "required": false,
           "type": "text"
         }
@@ -59,9 +59,9 @@
     },
     {
       "id": "interactive-demo",
-      "name": "交互终端演示",
-      "group": "示例/交互",
-      "description": "体验普通输入、隐藏输入、确认和进度刷新；不连接远程服务。",
+      "name": "Interactive Terminal Demo",
+      "group": "Examples/Interaction",
+      "description": "Try text input, hidden input, confirmation, and progress updates without connecting to remote services.",
       "file": "scripts/interactive-demo.sh",
       "interpreter": "/bin/bash",
       "parameters": []

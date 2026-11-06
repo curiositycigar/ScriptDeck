@@ -23,9 +23,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if runner?.foregroundRunningSessions.isEmpty == false {
             let alert = NSAlert()
-            alert.messageText = "仍有 \(runner?.foregroundRunningSessions.count ?? 0) 个手动脚本在运行"
-            alert.informativeText = "请先停止手动运行的任务或等待执行完成。后台定时任务可在退出 App 后继续运行。"
-            alert.addButton(withTitle: "返回应用")
+            alert.messageText = L("{0} manual scripts are still running", "\(runner?.foregroundRunningSessions.count ?? 0)")
+            alert.informativeText = L("Stop manual tasks or wait for them to finish. Scheduled tasks can continue after you quit the app.")
+            alert.addButton(withTitle: L("Return to App"))
             alert.runModal()
             mainWindow?.makeKeyAndOrderFront(nil)
             return .terminateCancel

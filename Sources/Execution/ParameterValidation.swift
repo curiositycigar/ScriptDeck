@@ -9,22 +9,22 @@ func parameterIssues(for item: ScriptItem, values: [String: String]) -> [String:
         let value = entries[index]
         if let issue = parameter.configurationIssue { issues[parameter.id] = issue; continue }
         if parameter.passing == .flag {
-            if !["", "true", "false"].contains(value) { issues[parameter.id] = "请选择开关状态。" }
+            if !["", "true", "false"].contains(value) { issues[parameter.id] = L("Choose a switch state.") }
             continue
         }
         if value.isEmpty {
-            if parameter.required { issues[parameter.id] = "请填写此必填参数。" }
-            else if parameter.passing == .positional, let last, index < last { issues[parameter.id] = "后续参数已有值，此位置不能留空。" }
+            if parameter.required { issues[parameter.id] = L("Enter a value for this required parameter.") }
+            else if parameter.passing == .positional, let last, index < last { issues[parameter.id] = L("A later parameter has a value, so this position cannot be empty.") }
             continue
         }
         if parameter.kind == .select && !parameter.options.contains(where: { $0.value == value }) {
-            issues[parameter.id] = "请选择有效选项。"
+            issues[parameter.id] = L("Choose a valid option.")
         }
         if parameter.kind == .file || parameter.kind == .folder {
             var directory: ObjCBool = false
             let exists = FileManager.default.fileExists(atPath: value, isDirectory: &directory)
             if !exists || (parameter.kind == .folder ? !directory.boolValue : directory.boolValue) {
-                issues[parameter.id] = parameter.kind == .folder ? "文件夹不存在或路径无效。" : "文件不存在或路径无效。"
+                issues[parameter.id] = parameter.kind == .folder ? L("The folder does not exist or its path is invalid.") : L("The file does not exist or its path is invalid.")
             }
         }
     }

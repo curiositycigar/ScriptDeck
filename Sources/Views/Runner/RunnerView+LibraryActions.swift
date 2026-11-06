@@ -13,8 +13,8 @@ extension RunnerView {
                 }.help(item.directory)
             }
             Divider()
-            Button("添加 Workspace…", action: addWorkspace)
-            Button("管理 Workspaces…", action: manageWorkspaces)
+            Button(L("Add Workspace…"), action: addWorkspace)
+            Button(L("Manage Workspaces…"), action: manageWorkspaces)
         } label: {
             Label(workspaceInfo.name, systemImage: "square.stack.3d.up")
                 .font(.headline).lineLimit(1).truncationMode(.middle)
@@ -22,18 +22,18 @@ extension RunnerView {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .help(workspaceInfo.directory)
-        .accessibilityLabel("切换 Workspace：" + workspaceInfo.name)
+        .accessibilityLabel(L("Switch workspace: ") + workspaceInfo.name)
     }
 
     var libraryMenu: some View {
         Menu {
-            Button("在 Finder 中打开 Workspace") { NSWorkspace.shared.open(workspaceInfo.directoryURL) }
-            Button("编辑 library.json") { if let file = store.fileURL { NSWorkspace.shared.open(file) } }
-            Button("重新加载配置") { store.reloadFromDisk(force: true) }
+            Button(L("Open Workspace in Finder")) { NSWorkspace.shared.open(workspaceInfo.directoryURL) }
+            Button(L("Edit library.json")) { if let file = store.fileURL { NSWorkspace.shared.open(file) } }
+            Button(L("Reload Configuration")) { store.reloadFromDisk(force: true) }
             Divider()
-            Button("管理 Workspaces…", action: manageWorkspaces)
+            Button(L("Manage Workspaces…"), action: manageWorkspaces)
         } label: { Image(systemName: "ellipsis.circle") }
-        .help("Workspace 操作").accessibilityLabel("Workspace 操作")
+        .help(L("Workspace Actions")).accessibilityLabel(L("Workspace Actions"))
     }
     func addWorkspace() { WorkspaceDialogs.add(to: workspaces) }
     func manageWorkspaces() {

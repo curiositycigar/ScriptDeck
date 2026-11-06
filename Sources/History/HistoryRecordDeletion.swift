@@ -18,14 +18,14 @@ enum HistoryRecordDeletion {
                 guard metadata.pathExtension == "json",
                       entry.record.logFilename.hasSuffix(".log"),
                       URL(fileURLWithPath: entry.record.logFilename).lastPathComponent == entry.record.logFilename else {
-                    throw RunnerError(message: "记录路径无效，未删除文件")
+                    throw RunnerError(message: L("Invalid record path; no files were deleted"))
                 }
                 // Revalidate after confirmation, in case another process replaced a record.
                 if try isRegularFile(metadata, files: files) {
                     let current = try decoder.decode(ExecutionRecord.self, from: Data(contentsOf: metadata))
                     guard current.version == 1, current.id == entry.id,
                           current.logFilename == entry.record.logFilename else {
-                        throw RunnerError(message: "记录已发生变化，请刷新后重试")
+                        throw RunnerError(message: L("The record has changed. Refresh and try again"))
                     }
                 }
                 if try isRegularFile(entry.logURL, files: files) { try files.removeItem(at: entry.logURL) }
@@ -45,7 +45,7 @@ enum HistoryRecordDeletion {
             return false
         }
         guard attributes[.type] as? FileAttributeType == .typeRegular else {
-            throw RunnerError(message: "日志路径不是普通文件，未删除")
+            throw RunnerError(message: L("The log path is not a regular file; nothing was deleted"))
         }
         return true
     }

@@ -7,12 +7,12 @@ struct RunnerMenuBarView: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Button("打开 ScriptDeck") { showMainWindow() }
+        Button(L("Open ScriptDeck")) { showMainWindow() }
         Divider()
         if runner.runningSessions.isEmpty {
-            Text("暂无运行中的任务")
+            Text(L("No running tasks"))
         } else {
-            Text("运行中 · \(runner.runningSessions.count)")
+            Text(L("Running · {0}", "\(runner.runningSessions.count)"))
             ForEach(runner.runningSessions) { session in
                 Button {
                     runner.select(session.id)
@@ -24,22 +24,22 @@ struct RunnerMenuBarView: View {
         }
         if let latest = runner.completedSessions.first {
             Divider()
-            Text("最近结束：\(latest.activeName)")
+            Text(L("Last finished: {0}", "\(latest.activeName)"))
             Text(latest.status)
         }
         Divider()
-        Text("定时任务 · \(schedules.enabledTaskCount) 个启用")
-        if schedules.failedTaskCount > 0 { Text("\(schedules.failedTaskCount) 个定时任务有异常，请在主窗口查看") }
+        Text(L("Schedules · {0} enabled", "\(schedules.enabledTaskCount)"))
+        if schedules.failedTaskCount > 0 { Text(L("{0} schedules need attention. Check the main window.", "\(schedules.failedTaskCount)")) }
         if let (task, date) = schedules.nextTask {
-            Text("下次：\(task.name)")
-            Text(date.formatted(date: .numeric, time: .shortened))
+            Text(L("Next: {0}", "\(task.name)"))
+            Text(L10n.date(date, dateStyle: .short, timeStyle: .short))
         }
         Divider()
-        Button("设置…") {
+        Button(L("Settings…")) {
             openWindow(id: "settings")
             NSApp.activate(ignoringOtherApps: true)
         }
-        Button("退出 ScriptDeck") { NSApp.terminate(nil) }
+        Button(L("Quit ScriptDeck")) { NSApp.terminate(nil) }
             .keyboardShortcut("q")
     }
 

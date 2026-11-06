@@ -15,61 +15,61 @@ struct ScriptEditor: View {
             HStack(spacing: 12) {
                 Image(systemName: "slider.horizontal.3").font(.title2).foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("脚本配置").font(.title3.weight(.semibold))
-                    Text(item.name.isEmpty ? "添加脚本与运行参数" : item.name)
+                    Text(L("Script Configuration")).font(.title3.weight(.semibold))
+                    Text(item.name.isEmpty ? L("Add a script and its parameters") : item.name)
                         .font(.callout).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer()
-                Picker("配置页面", selection: $editingParameters) {
-                    Text("基本信息").tag(false)
-                    Text("参数（\(item.parameters.count)）").tag(true)
+                Picker(L("Configuration Page"), selection: $editingParameters) {
+                    Text(L("General")).tag(false)
+                    Text(L("Parameters ({0})", "\(item.parameters.count)")).tag(true)
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 250)
             }.padding(22).background(.bar)
             Divider()
             Form {
                 if !editingParameters {
                     Section {
-                        TextField("名称", text: $item.name)
-                        TextField("分组", text: $item.category, prompt: Text("例如：部署 / 生产环境"))
-                        TextField("说明", text: $item.notes, axis: .vertical).lineLimit(2...5)
-                    } header: { Text("基本信息") } footer: { Text("分组使用 / 分隔层级，说明会显示在运行页面。") }
+                        TextField(L("Name"), text: $item.name)
+                        TextField(L("Group"), text: Binding(get: { item.category == "未分组" ? "" : item.category }, set: { item.category = $0 }), prompt: Text(L("For example: Deployment / Production")))
+                        TextField(L("Description"), text: $item.notes, axis: .vertical).lineLimit(2...5)
+                    } header: { Text(L("General")) } footer: { Text(L("Separate group levels with /. The description appears on the run page.")) }
                     Section {
                         HStack {
-                            TextField("脚本路径", text: $item.path, prompt: Text("相对于脚本库目录的路径"))
-                            Button("选择…") { choosePath { item.path = $0 } }
+                            TextField(L("Script Path"), text: $item.path, prompt: Text(L("Path relative to the library folder")))
+                            Button(L("Choose…")) { choosePath { item.path = $0 } }
                         }
-                        Picker("解释器", selection: Binding(get: { interpreters.contains(item.interpreter) ? item.interpreter : "custom" }, set: { item.interpreter = $0 == "custom" ? "" : $0 })) {
+                        Picker(L("Interpreter"), selection: Binding(get: { interpreters.contains(item.interpreter) ? item.interpreter : "custom" }, set: { item.interpreter = $0 == "custom" ? "" : $0 })) {
                             Text("Bash").tag("/bin/bash")
                             Text("Zsh").tag("/bin/zsh")
                             Text("Python 3").tag("python3")
                             Text("Node.js").tag("node")
-                            Text("直接执行（使用 shebang）").tag("direct")
-                            Text("自定义解释器").tag("custom")
+                            Text(L("Run directly (use shebang)")).tag("direct")
+                            Text(L("Custom Interpreter")).tag("custom")
                         }
                         if !interpreters.contains(item.interpreter) {
-                            TextField("解释器绝对路径", text: $item.interpreter)
+                            TextField(L("Absolute interpreter path"), text: $item.interpreter)
                         }
                         HStack {
-                            TextField("工作目录", text: $item.workingDirectory, prompt: Text("留空使用脚本所在目录"))
-                            Button("选择…") { choosePath(directory: true) { item.workingDirectory = $0 } }
+                            TextField(L("Working Directory"), text: $item.workingDirectory, prompt: Text(L("Leave empty to use the script's folder")))
+                            Button(L("Choose…")) { choosePath(directory: true) { item.workingDirectory = $0 } }
                         }
-                    } header: { Text("执行配置") } footer: { Text("相对路径基于当前 Workspace 解析。") }
+                    } header: { Text(L("Execution")) } footer: { Text(L("Relative paths are resolved against the current workspace.")) }
                 } else {
                     Section {
                         HStack {
-                            Text("按列表顺序传入，可直接编辑下方参数配置。")
+                            Text(L("Arguments are passed in list order. Edit their configuration below."))
                                 .font(.callout).foregroundStyle(.secondary)
                             Spacer()
                             Menu {
                                 ForEach(ParameterPassing.allCases) { passing in
                                     Button(passing.title) { addParameter(passing) }
                                 }
-                            } label: { Label("添加参数", systemImage: "plus") }
+                            } label: { Label(L("Add Parameter"), systemImage: "plus") }
                         }
                     }
                     Section {
                         if item.parameters.isEmpty {
-                            Text("暂无参数，点击“添加参数”选择位置参数、命名参数或开关。")
+                            Text(L("No parameters yet. Click “Add Parameter” to add a positional argument, named argument, or flag."))
                                 .font(.callout).foregroundStyle(.secondary).padding(.vertical, 12)
                         }
                         ForEach(item.parameters) { parameter in
@@ -78,20 +78,20 @@ struct ScriptEditor: View {
                                         HStack(spacing: 10) {
                                             Text("\((item.parameters.firstIndex { $0.id == parameter.id } ?? 0) + 1)")
                                                 .font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 22)
-                                            Text(parameter.name.isEmpty ? "未命名参数" : parameter.name)
+                                            Text(parameter.name.isEmpty ? L("Unnamed Parameter") : parameter.name)
                                                 .font(.callout.weight(.medium)).lineLimit(1)
                                             Spacer(minLength: 8)
                                             Text(parameter.summary).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                                         }
                                     HStack(spacing: 10) {
                                         Button { moveParameter(parameter.id, by: -1) } label: { Image(systemName: "arrow.up") }
-                                            .disabled(item.parameters.first?.id == parameter.id).help("上移参数").accessibilityLabel("上移参数")
+                                            .disabled(item.parameters.first?.id == parameter.id).help(L("Move parameter up")).accessibilityLabel(L("Move parameter up"))
                                         Button { moveParameter(parameter.id, by: 1) } label: { Image(systemName: "arrow.down") }
-                                            .disabled(item.parameters.last?.id == parameter.id).help("下移参数").accessibilityLabel("下移参数")
+                                            .disabled(item.parameters.last?.id == parameter.id).help(L("Move parameter down")).accessibilityLabel(L("Move parameter down"))
                                         Button(role: .destructive) {
                                             item.parameters.removeAll { $0.id == parameter.id }
                                         } label: { Image(systemName: "trash") }
-                                            .help("删除参数").accessibilityLabel("删除参数")
+                                            .help(L("Delete parameter")).accessibilityLabel(L("Delete parameter"))
                                     }.buttonStyle(.borderless)
                                 }.padding(.vertical, 4)
                                 parameterDetails(parameterBinding(parameter)).padding(.leading, 32).padding(.bottom, 10)
@@ -108,8 +108,8 @@ struct ScriptEditor: View {
                         .font(.caption).foregroundStyle(.red).textSelection(.enabled)
                 }
                 Spacer(minLength: 12)
-                Button("取消") { dismiss() }.keyboardShortcut(.cancelAction)
-                Button("保存") { saveItem() }.keyboardShortcut(.defaultAction).workspacePrimaryAction()
+                Button(L("Cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(L("Save")) { saveItem() }.keyboardShortcut(.defaultAction).workspacePrimaryAction()
             }.padding(18).background(.bar)
         }.frame(width: 760, height: 660)
     }
@@ -141,7 +141,7 @@ struct ScriptEditor: View {
     }
 
     private func addParameter(_ passing: ParameterPassing) {
-        var parameter = ScriptParameter(name: "参数 \(item.parameters.count + 1)")
+        var parameter = ScriptParameter(name: L("Parameter {0}", "\(item.parameters.count + 1)"))
         parameter.passing = passing
         item.parameters.append(parameter)
     }
@@ -150,12 +150,12 @@ struct ScriptEditor: View {
         VStack(alignment: .leading, spacing: 12) {
             Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 12) {
                 GridRow {
-                    Text("名称").foregroundStyle(.secondary)
-                    TextField("参数名称", text: parameter.name).labelsHidden()
+                    Text(L("Name")).foregroundStyle(.secondary)
+                    TextField(L("Parameter Name"), text: parameter.name).labelsHidden()
                 }
                 GridRow {
-                    Text("传递方式").foregroundStyle(.secondary)
-                    Picker("传递方式", selection: Binding(get: { parameter.wrappedValue.passing }, set: { passing in
+                    Text(L("Passing Style")).foregroundStyle(.secondary)
+                    Picker(L("Passing Style"), selection: Binding(get: { parameter.wrappedValue.passing }, set: { passing in
                         var updated = parameter.wrappedValue
                         let wasFlag = updated.passing == .flag
                         updated.passing = passing
@@ -171,51 +171,51 @@ struct ScriptEditor: View {
                 }
                 if parameter.wrappedValue.passing != .positional {
                     GridRow {
-                        Text("参数名").foregroundStyle(.secondary)
-                        TextField("参数名", text: parameter.argumentName, prompt: Text("例如 --output 或 -o"))
+                        Text(L("Argument Name")).foregroundStyle(.secondary)
+                        TextField(L("Argument Name"), text: parameter.argumentName, prompt: Text(L("For example: --output or -o")))
                             .labelsHidden()
                     }
                 }
                 if parameter.wrappedValue.passing == .named {
                     GridRow {
-                        Text("传值格式").foregroundStyle(.secondary)
-                        Picker("传值格式", selection: parameter.argumentFormat) {
+                        Text(L("Value Format")).foregroundStyle(.secondary)
+                        Picker(L("Value Format"), selection: parameter.argumentFormat) {
                             ForEach(NamedArgumentFormat.allCases) { Text($0.title).tag($0) }
                         }.labelsHidden().pickerStyle(.segmented)
                     }
                 }
                 if parameter.wrappedValue.passing == .flag {
                     GridRow {
-                        Text("默认状态").foregroundStyle(.secondary)
-                        Toggle("默认开启", isOn: Binding(
+                        Text(L("Default State")).foregroundStyle(.secondary)
+                        Toggle(L("Enabled by Default"), isOn: Binding(
                             get: { parameter.wrappedValue.defaultValue == "true" },
                             set: { parameter.wrappedValue.defaultValue = $0 ? "true" : "false" }
                         ))
                     }
                 } else {
                     GridRow {
-                        Text("输入类型").foregroundStyle(.secondary)
+                        Text(L("Input Type")).foregroundStyle(.secondary)
                         HStack {
-                            Picker("输入类型", selection: parameter.kind) {
+                            Picker(L("Input Type"), selection: parameter.kind) {
                                 ForEach(ParameterKind.allCases) { Text($0.title).tag($0) }
                             }.labelsHidden()
-                            Toggle("必填", isOn: parameter.required).fixedSize()
+                            Toggle(L("Required"), isOn: parameter.required).fixedSize()
                         }
                     }
                     GridRow {
-                        Text("占位提示").foregroundStyle(.secondary)
-                        TextField("占位提示", text: parameter.placeholder, prompt: Text("可选")).labelsHidden()
+                        Text(L("Placeholder")).foregroundStyle(.secondary)
+                        TextField(L("Placeholder"), text: parameter.placeholder, prompt: Text(L("Optional"))).labelsHidden()
                     }
                     if parameter.wrappedValue.kind != .select {
                         GridRow {
-                            Text("默认值").foregroundStyle(.secondary)
-                            TextField("默认值", text: parameter.defaultValue, prompt: Text("可选，请勿保存密码")).labelsHidden()
+                            Text(L("Default Value")).foregroundStyle(.secondary)
+                            TextField(L("Default Value"), text: parameter.defaultValue, prompt: Text(L("Optional; do not save passwords"))).labelsHidden()
                         }
                     }
                 }
             }.textFieldStyle(.roundedBorder).font(.callout)
             if parameter.wrappedValue.passing == .flag {
-                Text("开启时传入参数名，关闭时省略；不传 true 或 false。")
+                Text(L("Passes the argument name when enabled and omits it when disabled; does not pass true or false."))
                     .font(.caption).foregroundStyle(.secondary)
             } else if parameter.wrappedValue.kind == .select {
                 optionFields(parameter)
@@ -225,20 +225,20 @@ struct ScriptEditor: View {
 
     private func optionFields(_ parameter: Binding<ScriptParameter>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("左侧为界面显示名称，右侧为实际传给脚本的值。")
+            Text(L("Labels appear in the interface; values are passed to the script."))
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
-                Text("显示名称").frame(maxWidth: .infinity, alignment: .leading)
-                Text("实际传值").frame(maxWidth: .infinity, alignment: .leading)
+                Text(L("Display Label")).frame(maxWidth: .infinity, alignment: .leading)
+                Text(L("Argument Value")).frame(maxWidth: .infinity, alignment: .leading)
                 Color.clear.frame(width: 28, height: 1)
             }.font(.caption).foregroundStyle(.secondary)
             ForEach(Array(parameter.wrappedValue.options.enumerated()), id: \.offset) { index, option in
                 let binding = optionBinding(parameter, index: index, fallback: option)
                 HStack {
-                    TextField("显示名称", text: binding.label, prompt: Text("例如：生产环境"))
-                        .labelsHidden().textFieldStyle(.roundedBorder).accessibilityLabel("选项显示名称")
-                    TextField("实际传值", text: binding.value, prompt: Text("例如：production"))
-                        .labelsHidden().textFieldStyle(.roundedBorder).accessibilityLabel("选项实际传值")
+                    TextField(L("Display Label"), text: binding.label, prompt: Text(L("For example: Production")))
+                        .labelsHidden().textFieldStyle(.roundedBorder).accessibilityLabel(L("Option label"))
+                    TextField(L("Argument Value"), text: binding.value, prompt: Text(L("For example: production")))
+                        .labelsHidden().textFieldStyle(.roundedBorder).accessibilityLabel(L("Option value"))
                     Button(role: .destructive) {
                         var updated = parameter.wrappedValue
                         guard updated.options.indices.contains(index) else { return }
@@ -246,15 +246,15 @@ struct ScriptEditor: View {
                         parameter.wrappedValue = updated
                     } label: {
                         Image(systemName: "minus.circle")
-                    }.help("删除选项").accessibilityLabel("删除选项")
+                    }.help(L("Delete option")).accessibilityLabel(L("Delete option"))
                 }
             }
             HStack {
-                Button("添加选项") { parameter.wrappedValue.options.append(ParameterOption()) }
+                Button(L("Add Option")) { parameter.wrappedValue.options.append(ParameterOption()) }
                 Spacer()
-                Text("默认值").font(.callout).foregroundStyle(.secondary)
-                TextField("默认值", text: parameter.defaultValue, prompt: Text("填写选项的实际传值，可留空"))
-                    .labelsHidden().textFieldStyle(.roundedBorder).accessibilityLabel("选项默认值")
+                Text(L("Default Value")).font(.callout).foregroundStyle(.secondary)
+                TextField(L("Default Value"), text: parameter.defaultValue, prompt: Text(L("Enter an option value, or leave empty")))
+                    .labelsHidden().textFieldStyle(.roundedBorder).accessibilityLabel(L("Default option value"))
             }
         }
     }
@@ -268,9 +268,9 @@ struct ScriptEditor: View {
         item.path = (item.path as NSString).expandingTildeInPath
         item.workingDirectory = (item.workingDirectory as NSString).expandingTildeInPath
         item.interpreter = (item.interpreter as NSString).expandingTildeInPath
-        guard !item.name.isEmpty else { error = "请填写脚本名称。"; return }
+        guard !item.name.isEmpty else { error = L("Enter a script name."); return }
         guard item.parameters.allSatisfy({ !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) else {
-            error = "请填写每个参数的名称。"; return
+            error = L("Enter a name for every parameter."); return
         }
         for index in item.parameters.indices {
             item.parameters[index].argumentName = item.parameters[index].argumentName.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -281,6 +281,6 @@ struct ScriptEditor: View {
         }
         catch { self.error = error.localizedDescription; return }
         if item.category.isEmpty { item.category = "未分组" }
-        if save(item) { dismiss() } else { error = "保存失败。配置可能已被外部修改，请取消并重新打开编辑，或查看脚本库提示。" }
+        if save(item) { dismiss() } else { error = L("Unable to save. The configuration may have changed externally. Cancel and reopen the editor, or check the library warning.") }
     }
 }

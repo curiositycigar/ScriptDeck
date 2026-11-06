@@ -88,7 +88,7 @@ final class RunLogWriter: @unchecked Sendable {
     private func report(_ error: Error) {
         guard !reportedError else { return }
         reportedError = true
-        let message = "执行日志保存失败：\(error.localizedDescription)\n\(directory.path)"
+        let message = L("Unable to save the execution log: {0}\n{1}", "\(error.localizedDescription)", "\(directory.path)")
         record.logError = message
         onError(message)
     }

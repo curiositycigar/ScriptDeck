@@ -6,9 +6,9 @@ func configurationError(_ error: Error) -> String {
     }
     switch error {
     case DecodingError.keyNotFound(let key, let context):
-        return "\(location(context.codingPath)).\(key.stringValue)：缺少必填字段。"
+        return L("{0}.{1}: required field is missing.", "\(location(context.codingPath))", "\(key.stringValue)")
     case DecodingError.typeMismatch(_, let context), DecodingError.valueNotFound(_, let context):
-        return "\(location(context.codingPath))：字段类型不正确。\(context.debugDescription)"
+        return L("{0}: incorrect field type. {1}", "\(location(context.codingPath))", "\(context.debugDescription)")
     case DecodingError.dataCorrupted(let context):
         return "\(location(context.codingPath))：\(context.debugDescription)"
     default:

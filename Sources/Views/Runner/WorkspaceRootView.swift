@@ -30,8 +30,8 @@ struct WorkspaceRootView: View {
         .onChange(of: runner.launchRevision) { _ in outputExpanded = true }
         .onAppear { presentWorkspaceError() }
         .onChange(of: workspaces.error) { _ in presentWorkspaceError() }
-        .alert("定时任务操作失败", isPresented: Binding(get: { schedules.error != nil }, set: { if !$0 { schedules.error = nil } })) {
-            Button("好", role: .cancel) { schedules.error = nil }
+        .alert(L("Scheduled Task Operation Failed"), isPresented: Binding(get: { schedules.error != nil }, set: { if !$0 { schedules.error = nil } })) {
+            Button(L("OK"), role: .cancel) { schedules.error = nil }
         } message: { Text(schedules.error ?? "") }
     }
 
@@ -41,9 +41,9 @@ struct WorkspaceRootView: View {
         // An app-modal alert remains visible even when the Settings window is in front.
         DispatchQueue.main.async {
             let alert = NSAlert()
-            alert.messageText = "Workspace 操作失败"
+            alert.messageText = L("Workspace Operation Failed")
             alert.informativeText = message
-            alert.addButton(withTitle: "好")
+            alert.addButton(withTitle: L("OK"))
             alert.runModal()
         }
     }
@@ -59,13 +59,13 @@ struct WorkspaceRootView: View {
         } else {
             HSplitView {
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("WORKSPACES").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Button("添加 Workspace…") { WorkspaceDialogs.add(to: workspaces) }
+                    Text(L("WORKSPACES")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Button(L("Add Workspace…")) { WorkspaceDialogs.add(to: workspaces) }
                     Spacer()
                     Divider()
-                    Text("定时任务").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Text(L("Scheduled Tasks")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Button { navigation.destination = .schedules } label: {
-                        Label("全部定时任务", systemImage: "calendar.badge.clock").padding(8)
+                        Label(L("All Scheduled Tasks"), systemImage: "calendar.badge.clock").padding(8)
                     }
                     .buttonStyle(.plain)
                     .background(navigation.destination == .schedules ? Color.accentColor.opacity(0.12) : Color.clear,
@@ -75,9 +75,9 @@ struct WorkspaceRootView: View {
                 .background(.bar)
                 ZStack {
                     VStack(spacing: 0) {
-                        WorkspaceEmptyState(symbol: "square.stack.3d.up", title: "你的脚本工作空间",
-                                            message: "添加一个文件夹来管理本地脚本、配置运行参数并查看执行记录。")
-                        Button("添加 Workspace…") { WorkspaceDialogs.add(to: workspaces) }
+                        WorkspaceEmptyState(symbol: "square.stack.3d.up", title: L("Your Script Workspace"),
+                                            message: L("Add a folder to manage local scripts, configure parameters, and browse execution records."))
+                        Button(L("Add Workspace…")) { WorkspaceDialogs.add(to: workspaces) }
                             .workspacePrimaryAction().controlSize(.large)
                     }
                     .opacity(navigation.destination == .scripts ? 1 : 0)
@@ -94,7 +94,7 @@ struct WorkspaceRootView: View {
             .navigationTitle("ScriptDeck")
             .toolbar {
                 ToolbarItem {
-                    Button("管理 Workspaces…") {
+                    Button(L("Manage Workspaces…")) {
                         preferences.settingsTab = .workspaces
                         openWindow(id: "settings")
                     }

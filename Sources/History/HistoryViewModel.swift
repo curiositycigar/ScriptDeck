@@ -46,7 +46,7 @@ final class HistoryViewModel: ObservableObject {
         guard generation == pageGeneration else { return }
         switch result {
         case .success(let value): page = value
-        case .failure(let error): page = nil; pageError = "无法读取日志：\(error.localizedDescription)"
+        case .failure(let error): page = nil; pageError = L("Unable to read the log: {0}", "\(error.localizedDescription)")
         }
         loadingPage = false
     }
@@ -68,7 +68,7 @@ final class HistoryViewModel: ObservableObject {
         }
         deleting = false
         guard !result.failures.isEmpty else { return nil }
-        return "\(result.failures.count) 条记录未能完整删除，可刷新后重试。\n" + result.failures.prefix(3).joined(separator: "\n")
+        return L("{0} records could not be fully deleted. Refresh and try again.\n", "\(result.failures.count)") + result.failures.prefix(3).joined(separator: "\n")
     }
 
     private nonisolated static func readEntries(_ directories: [URL]) -> (entries: [HistoryEntry], warning: String?) {
@@ -87,7 +87,7 @@ final class HistoryViewModel: ObservableObject {
                         guard record.version == 1, !record.id.isEmpty,
                               record.logFilename.hasSuffix(".log"),
                               URL(fileURLWithPath: record.logFilename).lastPathComponent == record.logFilename else {
-                            throw RunnerError(message: "执行记录格式无效")
+                            throw RunnerError(message: L("Invalid execution record format"))
                         }
                         entries[record.id] = HistoryEntry(record: record, metadataURL: url)
                     } catch { invalid += 1 }
@@ -95,8 +95,8 @@ final class HistoryViewModel: ObservableObject {
             } catch { unreadable += 1 }
         }
         var issues: [String] = []
-        if unreadable > 0 { issues.append("\(unreadable) 个日志目录无法读取") }
-        if invalid > 0 { issues.append("\(invalid) 条损坏或不兼容的记录已跳过") }
+        if unreadable > 0 { issues.append(L("{0} log directories could not be read", "\(unreadable)")) }
+        if invalid > 0 { issues.append(L("Skipped {0} damaged or incompatible records", "\(invalid)")) }
         return (entries.values.sorted {
             $0.record.startedAt == $1.record.startedAt ? $0.id > $1.id : $0.record.startedAt > $1.record.startedAt
         }, issues.isEmpty ? nil : issues.joined(separator: "；"))

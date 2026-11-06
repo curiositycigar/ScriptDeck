@@ -15,7 +15,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
     @Published private(set) var workspaceID: String?
     @Published private(set) var workspaceName = ""
     @Published private(set) var scriptID: String?
-    @Published private(set) var status = "等待运行"
+    @Published private(set) var status = L("Ready to run")
     @Published private(set) var stopping = false
     @Published private(set) var hasOutput = false
     private(set) var terminalView: RunnerTerminalView
@@ -69,7 +69,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         endedAt = state.endedAt
         outcome = state.outcome
         isRunning = running && state.outcome == .running
-        status = isRunning ? (stopping ? "正在停止" : "定时执行中（后台）") : state.message ?? state.outcome?.title ?? "等待执行"
+        status = isRunning ? (stopping ? L("Stopping") : L("Scheduled task running in background")) : state.message ?? state.outcome?.title ?? L("Waiting to run")
         if !isRunning { stopping = false }
         terminalView.acceptsInput = false
         if let path = state.logPath, let handle = try? FileHandle(forReadingFrom: URL(fileURLWithPath: path)) {
@@ -92,10 +92,10 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
                let record = try? decoder.decode(ExecutionRecord.self, from: data) {
                 state.outcome = record.outcome == .running ? .failed : record.outcome
                 state.endedAt = record.endedAt ?? Date()
-                state.message = record.outcome == .running ? "后台执行器未正常结束" : record.outcome.title
+                state.message = record.outcome == .running ? L("The background executor ended unexpectedly") : record.outcome.title
             }
         }
-        if state.outcome == .running { state.outcome = .failed; state.endedAt = Date(); state.message = "后台执行器未正常结束" }
+        if state.outcome == .running { state.outcome = .failed; state.endedAt = Date(); state.message = L("The background executor ended unexpectedly") }
         updateScheduled(task: task, state: state, root: root, running: false)
     }
 
@@ -116,10 +116,10 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
     }
 
     func run(item: ScriptItem, arguments: [String], workspaceID: String? = nil, workspaceName: String = "") throws {
-        guard recordID == nil else { throw RunnerError(message: "执行会话不能重复启动。") }
+        guard recordID == nil else { throw RunnerError(message: L("An execution session can only be started once.")) }
         let command = try executionCommand(item, arguments: arguments)
         guard let executable = Bundle.main.executableURL?.path else {
-            throw RunnerError(message: "找不到应用的脚本执行入口。")
+            throw RunnerError(message: L("Unable to find the app's script execution entry point."))
         }
         let runID = UUID().uuidString
         let startDate = Date()
@@ -132,7 +132,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
                     self.historyIssue = message
                 }
             }
-        } catch { throw RunnerError(message: "无法创建本地执行日志，任务未启动：\(error.localizedDescription)") }
+        } catch { throw RunnerError(message: L("Unable to create the execution log. The task was not started: {0}", "\(error.localizedDescription)")) }
         logWriter = writer
         recordID = runID
         historyIssue = nil
@@ -157,15 +157,15 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         scriptID = item.id
         self.workspaceID = workspaceID
         self.workspaceName = workspaceName
-        status = "运行中"
+        status = L("Running")
         stopping = false
         stopRequested = false
         startedAt = startDate
         outcome = .running
         isRunning = true
-        if !workspaceName.isEmpty { event("Workspace：\(workspaceName)") }
-        event("开始：\(item.name)")
-        event("工作目录：\(command.directory)")
+        if !workspaceName.isEmpty { event(L("Workspace: {0}", workspaceName)) }
+        event(L("Started: {0}", "\(item.name)"))
+        event(L("Working directory: {0}", "\(command.directory)"))
         // Keep arguments out of the application metadata; scripts may receive secrets.
         var environment = ProcessInfo.processInfo.environment
         environment["TERM"] = "xterm-256color"
@@ -203,8 +203,8 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
             do {
                 try (recordID + (force ? ":force" : "")).write(to: ScheduleFiles.stop(scheduleRoot, scheduledTaskID), atomically: true, encoding: .utf8)
                 stopping = true
-                status = force ? "正在强制停止" : "正在停止"
-            } catch { historyIssue = "无法请求停止后台任务：\(error.localizedDescription)" }
+                status = force ? L("Force stopping") : L("Stopping")
+            } catch { historyIssue = L("Unable to request a background task stop: {0}", "\(error.localizedDescription)") }
             return
         }
         let process = terminalView.process!
@@ -213,7 +213,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         guard pid > 0 else { return }
         stopRequested = true
         stopping = true
-        status = force ? "正在强制停止" : "正在停止"
+        status = force ? L("Force stopping") : L("Stopping")
         let signal = force ? SIGKILL : SIGTERM
         let foreground = tcgetpgrp(process.childfd)
         if foreground > 0, foreground != pid, getsid(foreground) == pid {
@@ -231,18 +231,18 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
 
     func processFailedToStart(source: TerminalView, error: LocalProcessError) {
         guard source === terminalView else { return }
-        status = "启动失败"
-        event("无法启动任务：\(error)")
+        status = L("Failed to start")
+        event(L("Unable to start the task: {0}", "\(error)"))
         complete(outcome: .launchFailed, exitCode: nil)
     }
 
     func processTerminated(source: TerminalView, exitCode: Int32?) {
         guard source === terminalView else { return }
-        if stopRequested { status = "已停止" }
-        else if let code = exitCode { status = code == 0 ? "执行成功" : "执行失败（退出码 \(code)）" }
-        else { status = "进程被信号终止或状态不可用" }
+        if stopRequested { status = L("Stopped") }
+        else if let code = exitCode { status = code == 0 ? L("Completed successfully") : L("Failed (exit code {0})", "\(code)") }
+        else { status = L("The process was terminated by a signal or its status is unavailable") }
         terminalView.feed(text: "\r\n")
-        event("\(status)，耗时 \(Int(Date().timeIntervalSince(startedAt))) 秒")
+        event(L("{0}, elapsed {1} seconds", "\(status)", "\(Int(Date().timeIntervalSince(startedAt)))"))
         complete(outcome: stopRequested ? .stopped : exitCode == 0 ? .succeeded : .failed, exitCode: exitCode)
     }
 

@@ -10,4 +10,4 @@ RUNNER_SELF_CHECKS=1 swift build --package-path "$ROOT" \
     --config-path "$ROOT/.build/package-config" \
     --security-path "$ROOT/.build/package-security" \
     --experimental-prune-unused-dependencies --disable-prefetching --disable-sandbox --product ScriptDeck
-"$ROOT/.build/self-checks/debug/ScriptDeck"
+SCRIPTDECK_LANGUAGE="${SCRIPTDECK_LANGUAGE:-zh-Hans}" "$ROOT/.build/self-checks/debug/ScriptDeck"

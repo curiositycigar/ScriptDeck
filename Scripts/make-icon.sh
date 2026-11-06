@@ -9,4 +9,4 @@ for SIZE in 16 32 128 256 512; do
     sips -z "$DOUBLE" "$DOUBLE" "$ROOT/Assets/AppIcon.png" --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png" >/dev/null
 done
 /usr/bin/python3 "$ROOT/Scripts/pack-icon.py" "$ICONSET" "$ROOT/Assets/AppIcon.icns"
-printf '图标转换完成：%s\n' "$ROOT/Assets/AppIcon.icns"
+printf 'Icon converted: %s\n' "$ROOT/Assets/AppIcon.icns"

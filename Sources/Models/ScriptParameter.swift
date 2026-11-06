@@ -5,10 +5,10 @@ enum ParameterKind: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .text: return "文本"
-        case .file: return "文件"
-        case .folder: return "文件夹"
-        case .select: return "下拉选项"
+        case .text: return L("Text")
+        case .file: return L("File")
+        case .folder: return L("Folder")
+        case .select: return L("Selection")
         }
     }
 }
@@ -34,9 +34,9 @@ enum ParameterPassing: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .positional: return "位置参数"
-        case .named: return "命名参数"
-        case .flag: return "布尔开关"
+        case .positional: return L("Positional Argument")
+        case .named: return L("Named Argument")
+        case .flag: return L("Boolean Flag")
         }
     }
 }
@@ -49,7 +49,7 @@ enum NamedArgumentFormat: String, Codable, CaseIterable, Identifiable {
 
 struct ScriptParameter: Codable, Identifiable, Equatable {
     var id = UUID().uuidString
-    var name = "参数"
+    var name = L("Parameter")
     var kind: ParameterKind = .text
     var passing: ParameterPassing = .positional
     var argumentName = ""
@@ -100,17 +100,17 @@ extension ScriptParameter {
     var configurationIssue: String? {
         if passing != .positional {
             guard argumentName.range(of: "^-{1,2}[A-Za-z0-9][A-Za-z0-9_-]*$", options: .regularExpression) != nil else {
-                return "参数名需以 - 或 -- 开头，例如 -o 或 --output，且不能含空格或等号。"
+                return L("Argument names must start with - or --, such as -o or --output, and contain no spaces or equals signs.")
             }
         }
         if passing == .flag && !["", "true", "false"].contains(defaultValue) {
-            return "开关默认值只能为 true、false 或留空。"
+            return L("A flag default must be true, false, or empty.")
         }
         return nil
     }
     var summary: String {
-        if passing == .flag { return "开关 · \(argumentName)" }
-        if passing == .named { return "\(kind.title) · \(argumentName)\(argumentFormat == .equals ? "=值" : " 值")" }
-        return "\(kind.title) · 位置参数\(required ? " · 必填" : "")"
+        if passing == .flag { return L("Flag · {0}", "\(argumentName)") }
+        if passing == .named { return L("{0} · {1}{2}", "\(kind.title)", "\(argumentName)", "\(argumentFormat == .equals ? L("=value") : L(" value"))") }
+        return L("{0} · positional argument{1}", "\(kind.title)", "\(required ? L(" · required") : "")")
     }
 }

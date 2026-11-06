@@ -10,8 +10,8 @@ enum WorkspaceDialogs {
         panel.canChooseDirectories = true
         panel.canCreateDirectories = true
         panel.allowsMultipleSelection = false
-        panel.message = "选择 Workspace 目录；已有 library.json 时直接添加，没有时可初始化。"
-        panel.prompt = "添加 Workspace"
+        panel.message = L("Choose a workspace folder. An existing library.json will be loaded; otherwise you can initialize a library.")
+        panel.prompt = L("Add Workspace")
         panel.begin { response in
             guard response == .OK, let directory = panel.url else { return }
             do {
@@ -22,10 +22,10 @@ enum WorkspaceDialogs {
                 if !FileManager.default.fileExists(atPath: directory.appendingPathComponent("library.json").path) {
                     let store = ScriptStore(restoreLastDirectory: false)
                     let alert = NSAlert()
-                    alert.messageText = "初始化 Workspace？"
-                    alert.informativeText = "将创建 library.json 和 scripts 文件夹，保留已有文件。"
-                    alert.addButton(withTitle: "创建空脚本库")
-                    alert.addButton(withTitle: "取消")
+                    alert.messageText = L("Initialize Workspace?")
+                    alert.informativeText = L("Create library.json and a scripts folder while preserving existing files.")
+                    alert.addButton(withTitle: L("Create Empty Library"))
+                    alert.addButton(withTitle: L("Cancel"))
                     let choice = alert.runModal()
                     if choice == .alertFirstButtonReturn {
                         try store.initialize(directory, remember: false)
@@ -42,8 +42,8 @@ enum WorkspaceDialogs {
         panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
-        panel.message = "选择包含 library.json 的新目录，不会移动或复制文件。"
-        panel.prompt = "重新定位"
+        panel.message = L("Choose the new folder containing library.json. Files will not be moved or copied.")
+        panel.prompt = L("Relocate")
         panel.begin { response in
             guard response == .OK, let directory = panel.url else { return }
             do { try workspaces.relocate(workspace.id, to: directory, protectedID: runner.protectedWorkspaceID(for: workspace.id)) }

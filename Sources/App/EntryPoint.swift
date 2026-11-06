@@ -14,13 +14,13 @@ enum EntryPoint {
         }
         if CommandLine.arguments.count >= 4 && CommandLine.arguments[1] == "--execute-script" {
             if setpgid(0, 0) != 0 && getpgrp() != getpid() {
-                FileHandle.standardError.write(Data("无法创建脚本进程组。\n".utf8))
+                FileHandle.standardError.write(Data(L("Unable to create the script process group.\n").utf8))
                 exit(126)
             }
             let arguments = ["/bin/zsh", "-l", "-c", "cd -- \"$1\" && shift && exec \"$@\"", "scriptdeck"] + Array(CommandLine.arguments.dropFirst(2))
             var pointers = arguments.map { strdup($0) } + [nil]
             execv("/bin/zsh", &pointers)
-            FileHandle.standardError.write(Data("无法启动解释器：\(String(cString: strerror(errno)))\n".utf8))
+            FileHandle.standardError.write(Data(L("Unable to start the interpreter: {0}\n", "\(String(cString: strerror(errno)))").utf8))
             exit(126)
         }
         #if SELF_TEST

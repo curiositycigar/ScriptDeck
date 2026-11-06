@@ -18,6 +18,7 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
 @MainActor func runSelfTests() {
     _ = NSApplication.shared
     do {
+        try runLocalizationSelfTests()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("scriptdeck-tests-\(UUID())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -94,7 +95,7 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         pump(until: { runner.output.contains("stderr:test") })
         check(runner.isRunning, "脚本结束前已经收到实时输出")
         pump(until: { !runner.isRunning })
-        check(runner.status == "执行成功", "成功退出码正确")
+        check(runner.status == L("Completed successfully"), "成功退出码正确")
         check(runner.output.contains("stdout:\(payload)"), "特殊字符参数没有执行为命令")
         let unwrapped = runner.output.replacingOccurrences(of: "\n", with: "")
         check(unwrapped.contains("cwd:\(root.path)") || unwrapped.contains("cwd:\(root.resolvingSymlinksInPath().path)"), "使用脚本目录作为工作目录")
@@ -107,7 +108,7 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         try "echo failed >&2\nexit 7\n".write(to: failure, atomically: true, encoding: .utf8)
         try runner.run(item: .importing(failure), arguments: [])
         pump(until: { !runner.isRunning })
-        check(runner.status == "执行失败（退出码 7）", "显示非零退出码")
+        check(runner.status == L("Failed (exit code {0})", "7"), "显示非零退出码")
 
         let longRunning = root.appendingPathComponent("stop.sh")
         try "echo ready\nsleep 30\necho unexpected\n".write(to: longRunning, atomically: true, encoding: .utf8)
@@ -115,14 +116,14 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         pump(until: { runner.output.contains("ready\n") })
         runner.stop()
         pump(until: { !runner.isRunning })
-        check(runner.status.hasPrefix("已停止"), "停止父进程及等待中的子进程")
+        check(runner.status.hasPrefix(L("Stopped")), "停止父进程及等待中的子进程")
         check(!runner.output.contains("unexpected\n"), "停止后不会继续执行后续步骤")
 
         try "sleep 30 &\necho background-ready\nexit 0\n".write(to: longRunning, atomically: true, encoding: .utf8)
         try runner.run(item: .importing(longRunning), arguments: [])
         pump(until: { runner.output.contains("background-ready\n") })
         pump(until: { !runner.isRunning })
-        check(runner.status == "执行成功", "PTY 根任务退出后完成会话，不被后台输出描述符无限阻塞")
+        check(runner.status == L("Completed successfully"), "PTY 根任务退出后完成会话，不被后台输出描述符无限阻塞")
 
         try "trap '' TERM\necho ignore-term-ready\nwhile true; do sleep 1; done\n".write(to: longRunning, atomically: true, encoding: .utf8)
         try runner.run(item: .importing(longRunning), arguments: [])
@@ -130,7 +131,7 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         runner.stop()
         runner.stop(force: true)
         pump(until: { !runner.isRunning })
-        check(runner.status.hasPrefix("已停止"), "可以强制停止忽略终止信号的脚本")
+        check(runner.status.hasPrefix(L("Stopped")), "可以强制停止忽略终止信号的脚本")
 
         let interactive = root.appendingPathComponent("interactive.sh")
         try """
@@ -147,7 +148,7 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         pump(until: { runner.output.contains("hidden-ready") })
         runner.terminalView.process.send(data: Array("not-echoed-secret\n".utf8)[...])
         pump(until: { !runner.isRunning })
-        check(runner.status == "执行成功" && runner.output.contains("received:hello"), "PTY 支持终端检测和交互输入")
+        check(runner.status == L("Completed successfully") && runner.output.contains("received:hello"), "PTY 支持终端检测和交互输入")
         check(!runner.output.contains("not-echoed-secret"), "终端隐藏输入不出现在导出文本中")
 
         // Two live PTYs must preserve selection, input, signals and history independently.

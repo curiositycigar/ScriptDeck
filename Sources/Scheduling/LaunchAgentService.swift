@@ -20,11 +20,26 @@ struct LaunchAgentService: ScheduleService {
         let source = Bundle.main.executableURL ?? URL(fileURLWithPath: CommandLine.arguments[0])
         try FileManager.default.createDirectory(at: helper.deletingLastPathComponent(), withIntermediateDirectories: true,
                                                attributes: [.posixPermissions: 0o700])
+        if let resources = L10n.resourceBundle {
+            let destination = helper.deletingLastPathComponent().appendingPathComponent("ScriptDeck_ScriptDeck.bundle")
+            for language in ["en", "zh-hans"] {
+                if let source = resources.path(forResource: language, ofType: "lproj") {
+                    let folder = destination.appendingPathComponent(language + ".lproj")
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true,
+                                                           attributes: [.posixPermissions: 0o700])
+                    try Data(contentsOf: URL(fileURLWithPath: source).appendingPathComponent("Localizable.strings"))
+                        .write(to: folder.appendingPathComponent("Localizable.strings"), options: .atomic)
+                }
+            }
+            if let info = resources.url(forResource: "Info", withExtension: "plist") {
+                try Data(contentsOf: info).write(to: destination.appendingPathComponent("Info.plist"), options: .atomic)
+            }
+        }
         let temp = helper.deletingLastPathComponent().appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: temp) }
         try FileManager.default.copyItem(at: source, to: temp)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: temp.path)
-        guard rename(temp.path, helper.path) == 0 else { throw RunnerError(message: "无法安装后台执行器：\(String(cString: strerror(errno)))") }
+        guard rename(temp.path, helper.path) == 0 else { throw RunnerError(message: L("Unable to install the background executor: {0}", "\(String(cString: strerror(errno)))")) }
     }
     func propertyList(for task: ScheduledTask) -> [String: Any] {
         var plist: [String: Any] = [
@@ -78,7 +93,7 @@ struct LaunchAgentService: ScheduleService {
         let data = output.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         let text = String(decoding: data, as: UTF8.self)
-        guard process.terminationStatus == 0 else { throw RunnerError(message: "系统定时服务操作失败：\(text)") }
+        guard process.terminationStatus == 0 else { throw RunnerError(message: L("System scheduling service failed: {0}", "\(text)")) }
         return text
     }
 }

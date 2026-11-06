@@ -6,6 +6,8 @@ struct ScriptGroup: Identifiable {
     var children: [ScriptGroup]
     var scripts: [ScriptItem]
 
+    var displayName: String { id == "未分组" ? L("Ungrouped") : name }
+
     static func contains(_ category: String, in folder: String) -> Bool {
         let path = category.split(separator: "/").map(String.init).joined(separator: "/")
         let pathOrDefault = path.isEmpty ? "未分组" : path

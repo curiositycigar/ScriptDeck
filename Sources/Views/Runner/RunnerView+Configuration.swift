@@ -9,22 +9,22 @@ extension RunnerView {
                 configuration(item)
             } else if store.configurationIssue != nil {
                 VStack(spacing: 0) {
-                    WorkspaceEmptyState(symbol: "folder.badge.questionmark", title: "Workspace 暂不可用",
-                                        message: "检查 library.json；如果目录已移动，请在设置中重新定位。")
-                    Button("管理 Workspaces…", action: manageWorkspaces)
+                    WorkspaceEmptyState(symbol: "folder.badge.questionmark", title: L("Workspace Unavailable"),
+                                        message: L("Check library.json. If the folder has moved, relocate it in Settings."))
+                    Button(L("Manage Workspaces…"), action: manageWorkspaces)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(24)
             } else {
                 VStack(spacing: 0) {
-                    WorkspaceEmptyState(symbol: "terminal", title: store.directoryURL == nil ? "打开脚本库" : store.items.isEmpty ? "添加第一个脚本" : "选择一个脚本",
-                                        message: store.directoryURL == nil ? "选择保存配置和脚本的文件夹。" : store.items.isEmpty ? "导入本地脚本，或拖入侧栏开始使用。" : "从侧栏选择脚本，填写参数后即可运行。")
+                    WorkspaceEmptyState(symbol: "terminal", title: store.directoryURL == nil ? L("Open a Script Library") : store.items.isEmpty ? L("Add Your First Script") : L("Select a Script"),
+                                        message: store.directoryURL == nil ? L("Choose a folder for your scripts and configuration.") : store.items.isEmpty ? L("Import local scripts or drag them into the sidebar to get started.") : L("Select a script in the sidebar, enter its parameters, and run it."))
                     if store.directoryURL == nil {
-                        Button("打开脚本库…", action: addWorkspace)
+                        Button(L("Open Script Library…"), action: addWorkspace)
                             .buttonStyle(.borderedProminent).disabled(runner.isRunning)
                     } else if store.items.isEmpty {
-                        Button("导入脚本…", action: importScripts)
+                        Button(L("Import Scripts…"), action: importScripts)
                             .buttonStyle(.borderedProminent).disabled(store.configurationIssue != nil)
                     } else if !preferences.sidebarVisible {
-                        Button("显示侧栏") { preferences.sidebarVisible = true }
+                        Button(L("Show Sidebar")) { preferences.sidebarVisible = true }
                     }
                 }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(36)
             }
@@ -43,30 +43,30 @@ extension RunnerView {
                         .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
                     VStack(alignment: .leading, spacing: 5) {
                         Text(item.name).font(.system(size: 23, weight: .semibold)).lineLimit(2)
-                        Text(item.category.isEmpty ? "未分组" : item.category.replacingOccurrences(of: "/", with: "  ›  "))
+                        Text((item.category.isEmpty || item.category == "未分组") ? L("Ungrouped") : item.category.replacingOccurrences(of: "/", with: "  ›  "))
                             .font(.callout).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer(minLength: 8)
-                    Button { openEditor(item) } label: { Label("编辑", systemImage: "slider.horizontal.3") }
+                    Button { openEditor(item) } label: { Label(L("Edit"), systemImage: "slider.horizontal.3") }
                         .disabled(isActive(item))
                 }
                 if !item.notes.isEmpty {
                     Text(item.notes).font(.callout).foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 }
-                DisclosureGroup("脚本详情", isExpanded: $detailsExpanded) {
+                DisclosureGroup(L("Script Details"), isExpanded: $detailsExpanded) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(store.resolved(item).path).font(.caption.monospaced()).textSelection(.enabled)
                             .lineLimit(2).truncationMode(.middle).help(store.resolved(item).path)
-                        LabeledContent("解释器", value: item.interpreter == "direct" ? "直接执行" : item.interpreter)
-                        LabeledContent("工作目录", value: store.resolved(item).workingDirectory.isEmpty ? "脚本所在目录" : store.resolved(item).workingDirectory)
+                        LabeledContent(L("Interpreter"), value: item.interpreter == "direct" ? L("Run directly") : item.interpreter)
+                        LabeledContent(L("Working Directory"), value: store.resolved(item).workingDirectory.isEmpty ? L("Script's folder") : store.resolved(item).workingDirectory)
                             .lineLimit(1).truncationMode(.middle)
                         HStack {
-                            Button("复制路径") {
+                            Button(L("Copy Path")) {
                                 NSPasteboard.general.clearContents()
                                 NSPasteboard.general.setString(store.resolved(item).path, forType: .string)
                             }
-                            Button("在 Finder 中显示") {
+                            Button(L("Show in Finder")) {
                                 NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: store.resolved(item).path)])
                             }
                         }
@@ -78,7 +78,7 @@ extension RunnerView {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 22) {
-                        WorkspaceSectionTitle(title: "运行参数", subtitle: item.parameters.isEmpty ? "此脚本无需参数，可直接运行。" : "支持位置参数、命名参数与开关；修改仅在本次会话中保留。")
+                        WorkspaceSectionTitle(title: L("Run Parameters"), subtitle: item.parameters.isEmpty ? L("This script has no parameters and is ready to run.") : L("Supports positional arguments, named arguments, and flags. Changes are kept only for this app session."))
                         if !item.parameters.isEmpty { parameterFields(item) }
                     }
                     .frame(maxWidth: 760, alignment: .leading)
@@ -101,7 +101,7 @@ extension RunnerView {
                     HStack(spacing: 6) {
                         Text(parameter.name).font(.callout.weight(.medium))
                         Spacer()
-                        Text(parameter.passing == .flag ? parameter.argumentName : parameter.passing == .named ? parameter.argumentName + (parameter.required ? " · 必填" : " · 可选") : parameter.required ? "必填" : "可选").font(.caption).foregroundStyle(.secondary)
+                        Text(parameter.passing == .flag ? parameter.argumentName : parameter.passing == .named ? parameter.argumentName + (parameter.required ? L(" · required") : L(" · optional")) : parameter.required ? L("Required") : L("Optional")).font(.caption).foregroundStyle(.secondary)
                     }
                     HStack {
                         if parameter.passing == .flag {
@@ -112,13 +112,13 @@ extension RunnerView {
                                 .focused($focusedParameter, equals: parameter.id)
                         } else if parameter.kind == .select {
                             Picker("", selection: binding(for: parameter, scriptID: item.id)) {
-                                Text(parameter.placeholder.isEmpty ? "请选择…" : parameter.placeholder).tag("")
+                                Text(parameter.placeholder.isEmpty ? L("Choose…") : parameter.placeholder).tag("")
                                 ForEach(parameter.options) { option in Text(option.label).tag(option.value) }
                             }.labelsHidden().frame(maxWidth: .infinity, alignment: .leading)
                             .focused($focusedParameter, equals: parameter.id)
                             .accessibilityLabel(parameter.name)
                         } else {
-                            TextField(parameter.placeholder.isEmpty ? (parameter.kind == .text ? "输入参数值" : "选择路径或拖入文件") : parameter.placeholder, text: binding(for: parameter, scriptID: item.id))
+                            TextField(parameter.placeholder.isEmpty ? (parameter.kind == .text ? L("Enter a parameter value") : L("Choose a path or drag a file")) : parameter.placeholder, text: binding(for: parameter, scriptID: item.id))
                             .textFieldStyle(.roundedBorder)
                             .focused($focusedParameter, equals: parameter.id)
                             .accessibilityLabel(parameter.name)
@@ -132,7 +132,7 @@ extension RunnerView {
                             }
                         }
                         if parameter.passing != .flag && (parameter.kind == .file || parameter.kind == .folder) {
-                            Button("选择…") { choosePath(directory: parameter.kind == .folder) { session.values[item.id, default: [:]][parameter.id] = $0 } }
+                            Button(L("Choose…")) { choosePath(directory: parameter.kind == .folder) { session.values[item.id, default: [:]][parameter.id] = $0 } }
                         }
                     }
                     if let issue = issues[parameter.id] {
@@ -147,9 +147,9 @@ extension RunnerView {
     func executionBar(_ item: ScriptItem) -> some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
-                Label(isActive(item) ? "此脚本正在运行" : "准备就绪", systemImage: isActive(item) ? "waveform" : "checkmark.circle")
+                Label(isActive(item) ? L("This script is running") : L("Ready"), systemImage: isActive(item) ? "waveform" : "checkmark.circle")
                     .font(.callout.weight(.medium))
-                Text(isActive(item) ? "可在下方任务列表切换终端，或再次运行" : "⌘ Return 运行脚本")
+                Text(isActive(item) ? L("Switch terminals in the task list below, or run again") : L("⌘ Return to run script"))
                     .font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 12)
@@ -160,11 +160,11 @@ extension RunnerView {
                     schedulingItem = ScheduledTask(name: item.name, workspaceID: workspaceInfo.id,
                                                    workspaceName: workspaceInfo.name, item: store.resolved(item), values: supplied)
                 } catch { self.error = error.localizedDescription }
-            } label: { Label("定时…", systemImage: "clock.badge.plus") }
+            } label: { Label(L("Schedule…"), systemImage: "clock.badge.plus") }
             Button {
                 execute(item)
             } label: {
-                Label("运行", systemImage: "play.fill").frame(minWidth: 68)
+                Label(L("Run"), systemImage: "play.fill").frame(minWidth: 68)
             }
             .workspacePrimaryAction()
             .controlSize(.large)
