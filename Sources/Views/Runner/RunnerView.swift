@@ -20,6 +20,7 @@ struct RunnerView: View {
     @State var editor: ScriptItem?
     @State var editorRevision = 0
     @State var expandedGroups: [String: Bool] = [:]
+    @State var selectedSidebarFolder: String?
     @State var error: String?
     @State var deleteItem: ScriptItem?
     @State var creatingFolder = false
@@ -76,9 +77,16 @@ struct RunnerView: View {
             importScripts: importScripts,
             toggleSidebar: { preferences.sidebarVisible.toggle() }, toggleOutput: { outputExpanded.toggle() }
         ))
-        .onChange(of: session.selectedID) { _ in detailsExpanded = false; focusedParameter = nil }
+        .onChange(of: session.selectedID) { _ in
+            detailsExpanded = false
+            focusedParameter = nil
+            selectedSidebarFolder = nil
+        }
         .onChange(of: navigation.destination) { destination in
-            if destination == .schedules { focusedParameter = nil }
+            if destination == .schedules {
+                selectedSidebarFolder = nil
+                focusedParameter = nil
+            }
         }
         .sheet(item: $editor) { item in
             ScriptEditor(item: item, resolve: store.resolved) { updated in

@@ -78,7 +78,7 @@ struct WorkspaceSettingsView: View {
                 ForEach(workspaces.items) { item in
                     HStack(spacing: 12) {
                         Image(systemName: "folder.fill").font(.title2)
-                            .foregroundStyle(selectedID == item.id ? Color.white : Color.accentColor)
+                            .foregroundStyle(Color.accentColor)
                         VStack(alignment: .leading, spacing: 5) {
                         HStack {
                             Text(item.name).fontWeight(.medium)
@@ -93,9 +93,11 @@ struct WorkspaceSettingsView: View {
                             .lineLimit(1).truncationMode(.middle).help(item.directory)
                         }
                     }.padding(.vertical, 9).tag(item.id)
+                        .workspaceListSelection(selectedID == item.id)
                 }
             }
             .listStyle(.inset)
+            .workspaceListAppearance()
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay {
                 if workspaces.items.isEmpty {

@@ -96,6 +96,14 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         check(runner.isRunning, "脚本结束前已经收到实时输出")
         pump(until: { !runner.isRunning })
         check(runner.status == L("Completed successfully"), "成功退出码正确")
+        var commandLogSaved = false
+        runner.afterHistorySaved { commandLogSaved = true }
+        pump(until: { commandLogSaved })
+        let commandEntries = try FileManager.default.contentsOfDirectory(at: RunLogWriter.directory(for: source), includingPropertiesForKeys: nil)
+        let commandLog = try String(contentsOf: commandEntries.first { $0.pathExtension == "log" }!, encoding: .utf8)
+        let expectedCommand = try executionCommand(item, arguments: [payload]).argv.map(shellQuote).joined(separator: " ")
+        check(commandLog.contains(L("Command: {0}", expectedCommand)) && commandLog.range(of: L("Command: {0}", expectedCommand))!.lowerBound < commandLog.range(of: L("Started: {0}", item.name))!.lowerBound,
+              "Manual logs begin with the actual command and preserve quoted special-character arguments")
         check(runner.output.contains("stdout:\(payload)"), "特殊字符参数没有执行为命令")
         let unwrapped = runner.output.replacingOccurrences(of: "\n", with: "")
         check(unwrapped.contains("cwd:\(root.path)") || unwrapped.contains("cwd:\(root.resolvingSymlinksInPath().path)"), "使用脚本目录作为工作目录")
@@ -189,6 +197,19 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         check(concurrent.terminalView === secondSession.terminalView && concurrent.output == secondSession.output, "选择任务切换对应终端及导出内容")
         pump(until: { secondSession.terminalView.superview != nil && firstSession.terminalView.superview == nil })
         check(secondSession.output.contains("reply:beta:two") && firstSession.isRunning, "原生输出面板切换终端后保留缓冲区及后台执行")
+        let terminalHost = secondSession.terminalView.superview
+        for index in 0..<30 {
+            let selected = index.isMultiple(of: 2) ? firstSession : secondSession
+            let hidden = index.isMultiple(of: 2) ? secondSession : firstSession
+            concurrent.select(selected.id)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+            outputHost.layoutSubtreeIfNeeded()
+            check(selected.terminalView.superview === terminalHost && selected.terminalView.window === outputWindow &&
+                  hidden.terminalView.superview == nil,
+                  "Repeated record switches keep the selected terminal in the same visible host")
+            check(selected.output.contains(index.isMultiple(of: 2) ? "reply:alpha:one" : "reply:beta:two"),
+                  "Repeated record switches preserve each session's output buffer")
+        }
         outputWindow.setContentSize(NSSize(width: 680, height: 300))
         RunLoop.current.run(until: Date().addingTimeInterval(0.15))
         outputHost.layoutSubtreeIfNeeded()

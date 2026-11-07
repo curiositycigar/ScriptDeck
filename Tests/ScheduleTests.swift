@@ -80,6 +80,9 @@ private final class TestScheduleService: ScheduleService {
     check(once.terminationStatus == 0 && state.outcome == .succeeded && state.nextFireAt == nil, "无 App 窗口的后台入口完成一次性任务并消费时刻")
     let recordID = state.runID
     let log = try String(contentsOfFile: state.logPath!, encoding: .utf8)
+    let scheduledCommand = try executionCommand(task.item, arguments: scriptArguments(for: task.item, values: task.values))
+    check(log.hasPrefix(L("Command: {0}", scheduledCommand.argv.map(shellQuote).joined(separator: " ")) + "\n"),
+          "Scheduled logs begin with the actual command and quoted arguments")
     check(log.contains(payload) && log.contains("stderr:后台中文"), "后台日志收集标准输出、错误与 UTF-8")
     check(!FileManager.default.fileExists(atPath: directory.appendingPathComponent("scheduled-injection").path), "后台参数按原文传递，不执行命令替换")
     let replay = try launch(task); wait(replay)

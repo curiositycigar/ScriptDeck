@@ -70,7 +70,7 @@ MyScripts/
 
 External configuration edits are detected automatically. Invalid or conflicting edits produce a warning and preserve the last valid in-memory configuration. Importing a script from outside the library copies it into `scripts/`; removing a script configuration or workspace registration preserves the underlying files.
 
-Logs and metadata are saved beside each script in `logs/<script filename>/`. Log creation must succeed before execution starts. History deletion permanently removes the corresponding `.log` and `.json` files after confirmation, skipping active or still-saving records. Arguments and keystrokes are not separately recorded, but script output and echoed input appear in logs. Avoid storing or printing passwords.
+Logs and metadata are saved beside each script in `logs/<script filename>/`. Log creation must succeed before execution starts. History deletion permanently removes the corresponding `.log` and `.json` files after confirmation, skipping active or still-saving records. Each log starts with the assembled execution command, including the interpreter, script path, and shell-quoted arguments. Keystrokes are not separately recorded, but script output and echoed input appear in logs. Avoid storing or printing passwords.
 
 Schedule definitions and the standalone helper live in `~/Library/Application Support/ScriptDeck/Schedules/`; LaunchAgent files live in `~/Library/LaunchAgents/com.lucasyou.ScriptDeck.schedule.<ID>.plist`. Moving the app does not invalidate existing schedules. Moving scripts requires updating their schedules.
 

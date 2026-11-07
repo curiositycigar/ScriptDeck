@@ -56,16 +56,8 @@ struct ScriptEditor: View {
                     } header: { Text(L("Execution")) } footer: { Text(L("Relative paths are resolved against the current workspace.")) }
                 } else {
                     Section {
-                        HStack {
-                            Text(L("Arguments are passed in list order. Edit their configuration below."))
-                                .font(.callout).foregroundStyle(.secondary)
-                            Spacer()
-                            Menu {
-                                ForEach(ParameterPassing.allCases) { passing in
-                                    Button(passing.title) { addParameter(passing) }
-                                }
-                            } label: { Label(L("Add Parameter"), systemImage: "plus") }
-                        }
+                        Text(L("Arguments are passed in list order. Edit their configuration below."))
+                            .font(.callout).foregroundStyle(.secondary)
                     }
                     Section {
                         if item.parameters.isEmpty {
@@ -103,6 +95,13 @@ struct ScriptEditor: View {
             }.formStyle(.grouped)
             Divider()
             HStack(spacing: 12) {
+                if editingParameters {
+                    Menu {
+                        ForEach(ParameterPassing.allCases) { passing in
+                            Button(passing.title) { addParameter(passing) }
+                        }
+                    } label: { Label(L("Add Parameter"), systemImage: "plus") }
+                }
                 if let error {
                     Label(error, systemImage: "exclamationmark.circle.fill")
                         .font(.caption).foregroundStyle(.red).textSelection(.enabled)

@@ -435,3 +435,9 @@
 "WORKSPACES" = "WORKSPACES";
 "Workspace: {0}" = "Workspace: {0}";
 "Workspace" = "Workspace";
+
+"Scheduling Notes" = "Scheduling Notes";
+"{0} scheduled tasks" = "{0} scheduled tasks";
+
+"Select a script to run" = "Select a script to run";
+"Command: {0}" = "Command: {0}";

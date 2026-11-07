@@ -89,6 +89,7 @@ struct ExecutionHistoryView: View {
                 List(selection: $selectedID) {
                     ForEach(filtered) { entry in
                         historyRow(entry).tag(entry.id)
+                            .workspaceListSelection(selectedID == entry.id)
                             .contextMenu {
                                 Button(L("Delete This Record…"), role: .destructive) { requestDeletion([entry], scope: .selected) }
                                     .disabled(busy || runner.protectedHistoryRecordIDs.contains(entry.id))
@@ -99,6 +100,7 @@ struct ExecutionHistoryView: View {
                     if let selected, !busy { requestDeletion([selected], scope: .selected) }
                 }
                 .listStyle(.inset)
+                .workspaceListAppearance()
                 .scrollContentBackground(.hidden)
                 .background(Color.white)
                 .environment(\.colorScheme, .light)

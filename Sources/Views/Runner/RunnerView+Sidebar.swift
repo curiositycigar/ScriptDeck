@@ -2,11 +2,23 @@ import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
 
+enum SidebarSelection: Hashable {
+    case folder(String)
+    case script(String)
+}
+
 extension RunnerView {
     var sidebar: some View {
         VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(L("WORKSPACES")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                HStack {
+                    Text(L("WORKSPACES")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                    Spacer()
+                    Button { beginFolderCreation() } label: { Image(systemName: "folder.badge.plus") }
+                        .buttonStyle(.plain).foregroundStyle(.secondary)
+                        .help(L("New Folder")).accessibilityLabel(L("New Folder"))
+                        .disabled(store.directoryURL == nil || store.configurationIssue != nil)
+                }
                 workspaceMenu
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -23,9 +35,10 @@ extension RunnerView {
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 9))
             .padding(.horizontal, 12).padding(.bottom, 12)
             .help(L("Search names, groups, or paths"))
-            List(selection: scriptNavigationSelection) {
+            List(selection: sidebarSelection) {
                 ForEach(ScriptGroup.tree(filtered, folders: visibleFolders)) { group in groupView(group) }
             }.listStyle(.sidebar).scrollContentBackground(.hidden)
+                .workspaceListAppearance()
                 .frame(minHeight: 0, maxHeight: .infinity)
                 .overlay {
                 if filtered.isEmpty && visibleFolders.isEmpty {
@@ -41,7 +54,6 @@ extension RunnerView {
                     .disabled(store.directoryURL == nil || store.configurationIssue != nil)
             }
             VStack(alignment: .leading, spacing: 8) {
-                Divider().padding(.vertical, 4)
                 Text(L("Scheduled Tasks")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 Button { navigation.destination = .schedules } label: {
                     HStack {
@@ -51,18 +63,9 @@ extension RunnerView {
                     }.padding(8).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .background(navigation.destination == .schedules ? Color.accentColor.opacity(0.12) : Color.clear,
+                .background(navigation.destination == .schedules ? WorkspaceStyle.selectionColor : Color.clear,
                             in: RoundedRectangle(cornerRadius: 7))
-            }.padding(.horizontal, 14).padding(.bottom, 12)
-            Divider()
-            HStack(spacing: 6) {
-                Image(systemName: "terminal")
-                Text(search.isEmpty ? L("{0} scripts", "\(store.items.count)") : L("Found {0} scripts", "\(filtered.count)"))
-                Spacer()
-                Button { beginFolderCreation() } label: { Image(systemName: "folder.badge.plus") }
-                    .buttonStyle(.plain).help(L("New Folder")).accessibilityLabel(L("New Folder"))
-                    .disabled(store.directoryURL == nil || store.configurationIssue != nil)
-            }.font(.caption).foregroundStyle(.secondary).padding(14)
+            }.padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 12)
         }
         .frame(maxHeight: .infinity)
         .background { if dropTarget { Color.accentColor.opacity(0.12) } }
@@ -85,6 +88,25 @@ extension RunnerView {
         })
     }
 
+    var sidebarSelection: Binding<SidebarSelection?> {
+        Binding(get: {
+            guard navigation.destination == .scripts else { return nil }
+            if let folder = selectedSidebarFolder { return .folder(folder) }
+            return navigation.highlightedScript(in: session).map(SidebarSelection.script)
+        }, set: { selection in
+            switch selection {
+            case .folder(let id):
+                navigation.destination = .scripts
+                selectedSidebarFolder = id
+            case .script(let id):
+                selectedSidebarFolder = nil
+                scriptNavigationSelection.wrappedValue = id
+            case nil:
+                break
+            }
+        })
+    }
+
     func groupView(_ group: ScriptGroup) -> AnyView {
         AnyView(DisclosureGroup(isExpanded: Binding(get: { !search.isEmpty || (expandedGroups[group.id] ?? true) }, set: { expandedGroups[group.id] = $0 })) {
             ForEach(group.children) { child in groupView(child) }
@@ -94,7 +116,8 @@ extension RunnerView {
                     Text(item.name).lineLimit(1)
                     Spacer()
                     if isActive(item) { ProgressView().controlSize(.small) }
-                }.padding(.vertical, 4).tag(item.id).help(item.path)
+                }.padding(.vertical, 4).tag(SidebarSelection.script(item.id)).help(item.path)
+                .workspaceListSelection(sidebarSelection.wrappedValue == .script(item.id))
                 .contextMenu {
                     Button(L("Edit")) { openEditor(item) }.disabled(isActive(item))
                     Button(L("Show in Finder")) { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: store.resolved(item).path)]) }
@@ -115,7 +138,9 @@ extension RunnerView {
                 folderRevision = store.revision
                 deletingFolder = group.id
             }.disabled(group.id == "未分组")
-        }.disabled(store.configurationIssue != nil) })
+        }.disabled(store.configurationIssue != nil) }
+        .tag(SidebarSelection.folder(group.id))
+        .workspaceListSelection(sidebarSelection.wrappedValue == .folder(group.id)))
     }
 
     var visibleFolders: [String] {

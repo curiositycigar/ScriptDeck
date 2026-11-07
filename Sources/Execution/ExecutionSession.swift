@@ -163,6 +163,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         startedAt = startDate
         outcome = .running
         isRunning = true
+        event(L("Command: {0}", command.argv.map(shellQuote).joined(separator: " ")))
         if !workspaceName.isEmpty { event(L("Workspace: {0}", workspaceName)) }
         event(L("Started: {0}", "\(item.name)"))
         event(L("Working directory: {0}", "\(command.directory)"))

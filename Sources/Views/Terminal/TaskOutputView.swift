@@ -1,16 +1,13 @@
 import SwiftUI
 import AppKit
-import UniformTypeIdentifiers
 
 struct TaskOutputView: View {
     @ObservedObject var runner: ProcessRunner
     @ObservedObject var workspaces: WorkspaceStore
     @Binding var outputExpanded: Bool
-    var onRevealScript: () -> Void = {}
     @State private var showHistory = false
     @State private var showTaskList = true
     @State private var completedExpanded = true
-    @State private var error: String?
 
     var body: some View {
         Group {
@@ -19,27 +16,59 @@ struct TaskOutputView: View {
         .sheet(isPresented: $showHistory) {
             ExecutionHistoryView(workspaces: workspaces, runner: runner)
         }
-        .alert(L("Unable to Save"), isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
-            Button(L("OK"), role: .cancel) { error = nil }
-        } message: { Text(error ?? "") }
     }
 
     private var outputHeader: some View {
-        HStack(spacing: 12) {
-            Button { outputExpanded.toggle() } label: {
-                HStack(spacing: 7) {
-                    Image(systemName: outputExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Image(systemName: "terminal").foregroundStyle(.secondary)
-                    Text(L("Run Output")).font(.callout.weight(.semibold))
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) {
+                outputTitle.fixedSize()
+                if !outputExpanded { runningSummary }
+                Spacer(minLength: 0)
+                if outputExpanded { terminalActions.fixedSize() }
+                outputActions.fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 12) {
+                    outputTitle
+                    Spacer(minLength: 8)
+                    outputActions
+                }
+                if outputExpanded {
+                    HStack(spacing: 12) {
+                        Spacer(minLength: 8)
+                        terminalActions
+                    }
+                } else {
+                    runningSummary
                 }
             }
-            .buttonStyle(.plain)
-            .help(outputExpanded ? L("Collapse Output") : L("Expand Output"))
-            .accessibilityLabel(outputExpanded ? L("Collapse Output") : L("Expand Output"))
-            Text(runner.isRunning ? L("{0} running", "\(runner.runningSessions.count)") : L("No running tasks"))
-                .font(.caption).foregroundStyle(runner.isRunning ? Color.orange : Color.secondary)
-            Spacer(minLength: 8)
+        }
+        .controlSize(.small)
+        .padding(.horizontal, 20).padding(.vertical, 10)
+        .background(.bar)
+    }
+
+    private var outputTitle: some View {
+        Button { outputExpanded.toggle() } label: {
+            HStack(spacing: 7) {
+                Image(systemName: outputExpanded ? "chevron.down" : "chevron.right")
+                    .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                Image(systemName: "terminal").foregroundStyle(.tint)
+                Text(L("Run Output")).font(.callout.weight(.semibold))
+            }
+        }
+        .buttonStyle(.plain)
+        .help(outputExpanded ? L("Collapse Output") : L("Expand Output"))
+        .accessibilityLabel(outputExpanded ? L("Collapse Output") : L("Expand Output"))
+    }
+
+    private var runningSummary: some View {
+        Text(runner.isRunning ? L("{0} running", "\(runner.runningSessions.count)") : L("No running tasks"))
+            .font(.caption).foregroundStyle(runner.isRunning ? Color.orange : Color.secondary)
+    }
+
+    private var outputActions: some View {
+        HStack(spacing: 12) {
             if outputExpanded {
                 Button { showTaskList.toggle() } label: {
                     Image(systemName: "sidebar.left")
@@ -49,25 +78,23 @@ struct TaskOutputView: View {
             }
             Button { showHistory = true } label: {
                 Label(L("History"), systemImage: "clock.arrow.circlepath")
-            }.help(L("View execution records and local logs for all scripts"))
+            }
+            .labelStyle(.iconOnly)
+            .help(L("View execution records and local logs for all scripts"))
+            .accessibilityLabel(L("History"))
         }
-        .controlSize(.small)
-        .padding(.horizontal, 16).padding(.vertical, 11)
-        .background(.bar)
     }
 
     private var taskList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 4) {
-                Text(L("Running · {0}", "\(runner.runningSessions.count)"))
-                    .font(.caption.weight(.medium)).foregroundStyle(.secondary)
-                    .padding(.horizontal, 8).padding(.vertical, 6)
-                ForEach(runner.runningSessions) { session in
-                    taskButton(session)
-                }
-                if runner.runningSessions.isEmpty {
-                    Text(L("No running tasks")).font(.caption).foregroundStyle(.secondary)
-                        .padding(8)
+                if !runner.runningSessions.isEmpty {
+                    Text(L("Running · {0}", "\(runner.runningSessions.count)"))
+                        .font(.caption.weight(.medium)).foregroundStyle(.secondary)
+                        .padding(.horizontal, 8).padding(.vertical, 6)
+                    ForEach(runner.runningSessions) { session in
+                        taskButton(session)
+                    }
                 }
                 if !runner.completedSessions.isEmpty {
                     DisclosureGroup(isExpanded: $completedExpanded) {
@@ -79,7 +106,16 @@ struct TaskOutputView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }.padding(.top, 6)
                 }
-            }.padding(8)
+            }.padding(12)
+        }
+        .overlay {
+            if runner.sessions.isEmpty {
+                Text(L("Select a script to run"))
+                    .font(.callout).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).padding(20)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .allowsHitTesting(false)
+            }
         }
         .background(Color(nsColor: .controlBackgroundColor))
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -100,21 +136,21 @@ struct TaskOutputView: View {
                 .disabled(!runner.sessions.contains { !$0.isRunning && !$0.hasPendingHistoryWrites })
                 .help(L("Remove completed tasks while preserving history and logs"))
                 .accessibilityLabel(L("Remove completed tasks"))
-            }.font(.caption).padding(10).background(.bar)
+            }.font(.caption).padding(.horizontal, 16).padding(.vertical, 10)
         }
-        .frame(minWidth: 160, idealWidth: 200, maxWidth: 280, maxHeight: .infinity)
+        .frame(minWidth: 200, idealWidth: 240, maxWidth: 300, maxHeight: .infinity)
     }
 
     private func taskButton(_ session: ExecutionSession) -> some View {
         Button { runner.select(session.id) } label: {
             ExecutionSessionRow(session: session)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 8).padding(.vertical, 2)
+                .padding(.horizontal, 10).padding(.vertical, 8)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .background(runner.selectedSessionID == session.id ? Color.accentColor.opacity(0.15) : Color.clear,
-                    in: RoundedRectangle(cornerRadius: 6))
+        .background(runner.selectedSessionID == session.id ? WorkspaceStyle.selectionColor : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 7))
         .accessibilityValue(runner.selectedSessionID == session.id ? L("Selected") : L("Not selected"))
         .contextMenu {
             Button(L("Remove This Record"), role: .destructive) { runner.dismissSession(session.id) }
@@ -127,24 +163,8 @@ struct TaskOutputView: View {
         }
     }
 
-    private var selectedHeader: some View {
+    private var terminalActions: some View {
         HStack(spacing: 10) {
-            if !runner.activeName.isEmpty {
-                Button(action: revealSelectedScript) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(runner.activeName).font(.callout.weight(.medium)).lineLimit(1)
-                        Text(runner.workspaceName.isEmpty ? L("Unspecified Workspace") : runner.workspaceName)
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help(L("Return to this task's workspace and script"))
-                .disabled(!workspaces.items.contains { $0.id == runner.workspaceID })
-                Text(runner.status).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            } else {
-                Text(L("Select a task to view output")).font(.callout).foregroundStyle(.secondary)
-            }
-            Spacer(minLength: 0)
             if let issue = runner.historyIssue {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                     .help(issue).accessibilityLabel(issue)
@@ -154,12 +174,6 @@ struct TaskOutputView: View {
                 NSPasteboard.general.setString(runner.exportText(), forType: .string)
             } label: { Image(systemName: "doc.on.doc") }
             .help(L("Copy Selected Task Log")).accessibilityLabel(L("Copy Selected Task Log")).disabled(!runner.hasOutput)
-            Menu {
-                Button(L("Save Log…"), action: saveLog).disabled(!runner.hasOutput)
-                Button(L("Clear Terminal")) { runner.clearOutput() }.disabled(runner.selectedIsRunning || !runner.hasOutput)
-            } label: { Image(systemName: "ellipsis") }
-            .menuStyle(.borderlessButton).fixedSize()
-            .help(L("Selected Task Log Options")).accessibilityLabel(L("Selected Task Log Options"))
             if runner.selectedIsRunning {
                 Button(L("Interrupt")) { runner.interrupt() }.help(L("Send Ctrl+C to the selected task"))
                     .disabled(runner.selectedSession.isBackgroundExecution)
@@ -169,28 +183,25 @@ struct TaskOutputView: View {
             }
         }
         .controlSize(.small)
-        .padding(.horizontal, 14).padding(.vertical, 8)
-        .frame(minHeight: 45)
-        .background(.bar)
     }
 
     private var terminalPane: some View {
-        VStack(spacing: 0) {
-            selectedHeader
-            Divider()
-            EmbeddedTerminalView(runner: runner)
-                .id(runner.sessionID)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay(alignment: .topLeading) {
-                    if !runner.hasOutput {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(L("Terminal Ready")).font(.callout.weight(.medium))
-                            Text(L("Run a script to view output and type here. Password input usually does not display characters."))
-                                .font(.caption).foregroundStyle(.secondary)
-                        }.padding(20).allowsHitTesting(false)
+        EmbeddedTerminalView(session: runner.selectedSession)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(12)
+            .background(Color(nsColor: .textBackgroundColor))
+            .overlay(alignment: .topLeading) {
+                if !runner.hasOutput && !runner.selectedIsRunning {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(L("Terminal Ready")).font(.callout.weight(.medium))
+                        Text(L("Run a script to view output and type here. Password input usually does not display characters."))
+                            .font(.caption).foregroundStyle(.secondary)
                     }
+                    .frame(maxWidth: 480, alignment: .leading)
+                    .padding(20).allowsHitTesting(false)
                 }
-        }.frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var logView: some View {
@@ -211,28 +222,7 @@ struct TaskOutputView: View {
         .clipped()
     }
 
-    private func revealSelectedScript() {
-        guard let id = runner.workspaceID,
-              let workspace = workspaces.items.first(where: { $0.id == id }) else { return }
-        workspaces.select(id)
-        if let scriptID = runner.scriptID,
-           workspaces.library(for: workspace).items.contains(where: { $0.id == scriptID }) {
-            workspaces.session(for: workspace).selectedID = scriptID
-            onRevealScript()
-        }
-    }
 
-    private func saveLog() {
-        let panel = NSSavePanel()
-        panel.nameFieldStringValue = L("Script Log.txt")
-        panel.allowedContentTypes = [.plainText]
-        let text = runner.exportText()
-        panel.begin { result in
-            guard result == .OK, let url = panel.url else { return }
-            do { try text.write(to: url, atomically: true, encoding: .utf8) }
-            catch { self.error = error.localizedDescription }
-        }
-    }
 }
 
 private struct ExecutionSessionRow: View {
@@ -283,20 +273,19 @@ private struct ExecutionSessionRow: View {
                     Text(session.activeName)
                         .font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
                     Spacer(minLength: 0)
+                }
+                HStack(spacing: 5) {
+                    Image(systemName: symbol).foregroundStyle(resultColor)
+                        .accessibilityLabel(session.status)
+                    Text(session.status).lineLimit(1)
+                    Spacer(minLength: 4)
                     Text(duration(at: context.date))
                         .font(.caption.monospacedDigit()).foregroundStyle(.secondary)
                         .fixedSize()
                         .accessibilityLabel(L("Elapsed ") + duration(at: context.date))
                 }
-                HStack(spacing: 5) {
-                    Image(systemName: symbol).foregroundStyle(resultColor)
-                        .accessibilityLabel(session.status)
-                    Text(L10n.date(session.startedAt, dateStyle: .short))
-                        .monospacedDigit().lineLimit(1)
-                }
                 .font(.caption2).foregroundStyle(.secondary)
             }
-            .padding(.vertical, 4)
             .help(L("{0} / {1}\n{2} · elapsed {3}\nStarted: {4}", "\(session.workspaceName)", "\(session.activeName)", "\(session.status)", "\(duration(at: context.date))", "\(L10n.date(session.startedAt))"))
         }
     }

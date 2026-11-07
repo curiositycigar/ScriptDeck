@@ -15,15 +15,13 @@ struct WorkspaceRootView: View {
             if outputExpanded {
                 VSplitView {
                     currentWorkspace.frame(minHeight: 280, idealHeight: 460)
-                    TaskOutputView(runner: runner, workspaces: workspaces, outputExpanded: $outputExpanded,
-                                   onRevealScript: { navigation.destination = .scripts })
+                    TaskOutputView(runner: runner, workspaces: workspaces, outputExpanded: $outputExpanded)
                         .frame(minHeight: 140, idealHeight: 240)
                 }
             } else {
                 currentWorkspace.frame(maxHeight: .infinity)
                 Divider()
-                TaskOutputView(runner: runner, workspaces: workspaces, outputExpanded: $outputExpanded,
-                               onRevealScript: { navigation.destination = .scripts })
+                TaskOutputView(runner: runner, workspaces: workspaces, outputExpanded: $outputExpanded)
             }
         }
         .frame(minWidth: 680, minHeight: 540)
@@ -62,13 +60,12 @@ struct WorkspaceRootView: View {
                     Text(L("WORKSPACES")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Button(L("Add Workspace…")) { WorkspaceDialogs.add(to: workspaces) }
                     Spacer()
-                    Divider()
                     Text(L("Scheduled Tasks")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                     Button { navigation.destination = .schedules } label: {
                         Label(L("All Scheduled Tasks"), systemImage: "calendar.badge.clock").padding(8)
                     }
                     .buttonStyle(.plain)
-                    .background(navigation.destination == .schedules ? Color.accentColor.opacity(0.12) : Color.clear,
+                    .background(navigation.destination == .schedules ? WorkspaceStyle.selectionColor : Color.clear,
                                 in: RoundedRectangle(cornerRadius: 7))
                 }.padding(14)
                 .frame(minWidth: 220, idealWidth: 250, maxWidth: 330, maxHeight: .infinity)

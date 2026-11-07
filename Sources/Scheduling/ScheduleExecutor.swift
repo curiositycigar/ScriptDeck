@@ -48,9 +48,10 @@ enum ScheduleExecutor {
             state.logPath = log.logURL.path
             state.metadataPath = log.metadataURL.path
             try ScheduleFiles.write(state, ScheduleFiles.runtime(root, id))
-            log.appendMessage(L("Scheduled task: {0} · {1}", "\(task.name)", "\(task.workspaceName)"))
             try task.validate(requireFuture: false)
             let command = try executionCommand(task.item, arguments: scriptArguments(for: task.item, values: task.values))
+            log.appendMessage(L("Command: {0}", command.argv.map(shellQuote).joined(separator: " ")))
+            log.appendMessage(L("Scheduled task: {0} · {1}", "\(task.name)", "\(task.workspaceName)"))
             let process = Process()
             process.executableURL = URL(fileURLWithPath: CommandLine.arguments[0])
             process.arguments = ["--execute-script", command.directory] + command.argv

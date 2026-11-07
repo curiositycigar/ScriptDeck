@@ -77,12 +77,12 @@ final class RunnerTerminalView: TerminalView, TerminalViewDelegate, LocalProcess
 }
 
 struct EmbeddedTerminalView: NSViewRepresentable {
-    @ObservedObject var runner: ProcessRunner
+    let session: ExecutionSession
 
     func makeNSView(context: Context) -> NSView {
-        let host = NSView(frame: runner.terminalView.frame)
+        let host = NSView(frame: session.terminalView.frame)
         attachTerminal(to: host)
-        runner.focusTerminal()
+        session.focusTerminal()
         return host
     }
 
@@ -91,7 +91,7 @@ struct EmbeddedTerminalView: NSViewRepresentable {
     }
 
     private func attachTerminal(to host: NSView) {
-        let terminal = runner.terminalView
+        let terminal = session.terminalView
         guard terminal.superview !== host else { return }
         host.subviews.forEach { $0.removeFromSuperview() }
         terminal.removeFromSuperview()

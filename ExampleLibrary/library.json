@@ -1,71 +1,88 @@
 {
-  "$schema": "library.schema.json",
-  "scripts": [
+  "$schema" : "library.schema.json",
+  "folders" : [
+
+  ],
+  "scripts" : [
     {
-      "cwd": ".",
-      "description": "Demonstrates separate option labels and values. Only prints selected arguments; does not connect to servers or change files.",
-      "file": "scripts/show-options.sh",
-      "group": "Examples/Parameters",
-      "id": "options-demo",
-      "interpreter": "/bin/bash",
-      "name": "Selection Parameters Demo",
-      "parameters": [
+      "cwd" : ".",
+      "description" : "Demonstrates separate option labels and values. Only prints selected arguments; does not connect to servers or change files.",
+      "file" : "scripts/show-options.sh",
+      "group" : "Examples/Parameters",
+      "id" : "options-demo",
+      "interpreter" : "/bin/bash",
+      "name" : "Selection Parameters Demo",
+      "parameters" : [
         {
-          "default": "development",
-          "id": "environment",
-          "label": "Environment",
-          "options": [
+          "default" : "development",
+          "id" : "environment",
+          "label" : "Environment",
+          "options" : [
             {
-              "label": "Development",
-              "value": "development"
+              "label" : "Development",
+              "value" : "development"
             },
             {
-              "label": "Staging",
-              "value": "staging"
+              "label" : "Staging",
+              "value" : "staging"
             },
             {
-              "label": "Production",
-              "value": "production"
+              "label" : "Production",
+              "value" : "production"
             }
           ],
-          "required": true,
-          "type": "select"
+          "required" : true,
+          "type" : "select"
         },
         {
-          "default": "preview",
-          "id": "mode",
-          "label": "Mode",
-          "options": [
+          "default" : "preview",
+          "id" : "mode",
+          "label" : "Mode",
+          "options" : [
             {
-              "label": "preview",
-              "value": "preview"
+              "label" : "preview",
+              "value" : "preview"
             },
             {
-              "label": "verbose",
-              "value": "verbose"
+              "label" : "verbose",
+              "value" : "verbose"
             }
           ],
-          "required": true,
-          "type": "select"
+          "required" : true,
+          "type" : "select"
         },
         {
-          "id": "note",
-          "label": "Note",
-          "placeholder": "Optional; try a value containing spaces",
-          "required": false,
-          "type": "text"
+          "id" : "note",
+          "label" : "Note",
+          "placeholder" : "Optional; try a value containing spaces",
+          "required" : false,
+          "type" : "text"
+        },
+        {
+          "id" : "5DBE42B6-4AF5-4C8D-99E8-B054A2EF06CD",
+          "label" : "Parameter 4",
+          "required" : false,
+          "type" : "text"
+        },
+        {
+          "id" : "C77080F2-7410-49B3-8E63-03DAE6FEEADF",
+          "label" : "Parameter 5",
+          "required" : false,
+          "type" : "text"
         }
       ]
     },
     {
-      "id": "interactive-demo",
-      "name": "Interactive Terminal Demo",
-      "group": "Examples/Interaction",
-      "description": "Try text input, hidden input, confirmation, and progress updates without connecting to remote services.",
-      "file": "scripts/interactive-demo.sh",
-      "interpreter": "/bin/bash",
-      "parameters": []
+      "description" : "Try text input, hidden input, confirmation, and progress updates without connecting to remote services.",
+      "file" : "scripts/interactive-demo.sh",
+      "group" : "Examples/Interaction",
+      "id" : "interactive-demo",
+      "interpreter" : "/bin/bash",
+      "name" : "Interactive Terminal Demo",
+      "parameters" : [
+
+      ]
     }
   ],
-  "version": 1
+  "version" : 1
 }

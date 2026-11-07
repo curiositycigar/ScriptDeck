@@ -8,34 +8,50 @@ struct ScheduleDashboard: View {
     @State private var creating = false
     @State private var editing: ScheduledTask?
     @State private var deleting: ScheduledTask?
+    @State private var notesExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(L("Scheduled Tasks")).font(.title2.bold())
-                    Text(L("Runs in the macOS background, even after you quit the app."))
-                        .font(.callout).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Button { creating = true } label: { Label(L("New Scheduled Task"), systemImage: "plus") }
-                    .disabled(workspaces.items.isEmpty)
-            }
-            if schedules.tasks.isEmpty {
-                WorkspaceEmptyState(symbol: "calendar.badge.clock", title: L("No scheduled tasks yet"),
-                                    message: L("Choose a workspace and script, then set a time or repeat interval. You can also create a schedule from the script's run bar to save its current parameters."))
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(schedules.tasks) { task in taskRow(task) }
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    HStack(alignment: .top, spacing: 12) {
+                        Image(systemName: "calendar.badge.clock")
+                            .font(.system(size: 19, weight: .medium)).foregroundStyle(.tint)
+                            .frame(width: 40, height: 40)
+                            .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(L("Scheduled Tasks")).font(.title2.weight(.semibold))
+                            Text(L("Runs in the macOS background, even after you quit the app."))
+                                .font(.callout).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
+                    if schedules.tasks.isEmpty {
+                        WorkspaceEmptyState(symbol: "calendar.badge.clock", title: L("No scheduled tasks yet"),
+                                            message: L("Choose a workspace and script, then set a time or repeat interval. You can also create a schedule from the script's run bar to save its current parameters."))
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        LazyVStack(spacing: 12) {
+                            ForEach(schedules.tasks) { task in taskRow(task) }
+                        }
+                    }
+                    DisclosureGroup(L("Scheduling Notes"), isExpanded: $notesExpanded) {
+                        Text(L("Your Mac must be on and you must be logged in. Tasks do not run during sleep; at most one missed run is caught up afterward. Each schedule prevents overlapping runs. Background tasks do not support keyboard input."))
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(.top, 10)
+                    }.font(.caption).foregroundStyle(.secondary)
                 }
+                .frame(maxWidth: 800, alignment: .leading)
+                .frame(maxWidth: .infinity)
+                .padding(20)
             }
-            Text(L("Your Mac must be on and you must be logged in. Tasks do not run during sleep; at most one missed run is caught up afterward. Each schedule prevents overlapping runs. Background tasks do not support keyboard input."))
-                .font(.caption).foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            dashboardActions
+                .frame(maxWidth: 800)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20).padding(.vertical, 12)
+                .background(.bar)
         }
-        .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(nsColor: .windowBackgroundColor))
         .navigationTitle(L("Scheduled Tasks"))
@@ -53,52 +69,127 @@ struct ScheduleDashboard: View {
             }
         } message: { Text(L("Remove this system schedule. Existing execution history and logs will be preserved.")) }
     }
+    private var taskCount: some View {
+        Text(L("{0} scheduled tasks", "\(schedules.tasks.count)"))
+            .font(.callout).foregroundStyle(.secondary).fixedSize()
+    }
+
+    private var createButton: some View {
+        Button { creating = true } label: { Label(L("New Scheduled Task"), systemImage: "plus") }
+            .workspacePrimaryAction()
+            .controlSize(.regular)
+            .disabled(workspaces.items.isEmpty)
+    }
+
+    private var dashboardActions: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 20) {
+                taskCount
+                Spacer(minLength: 12)
+                createButton.fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                taskCount
+                HStack { Spacer(); createButton }
+            }
+        }
+    }
+
     private func taskRow(_ task: ScheduledTask) -> some View {
         let state = schedules.state(for: task)
         let running = schedules.runningIDs.contains(task.id)
         let completed = task.kind == .once && state?.runID != nil && state?.nextFireAt == nil
-        return VStack(alignment: .leading, spacing: 10) {
-            HStack {
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 10) {
                 Image(systemName: running ? "play.circle.fill" : task.enabled && !completed ? "clock" : "pause.circle")
                     .foregroundStyle(running ? Color.orange : Color.secondary)
-                Text(task.name).font(.headline).lineLimit(1)
-                Spacer()
-                Text(running ? L("Executing") : !task.enabled ? L("Paused") : completed ? L("Triggered") : L("Enabled"))
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-            Text("\(task.workspaceName) · \(task.item.name) · \(task.summary)")
-                .font(.callout).foregroundStyle(.secondary)
-            if task.enabled, let next = state?.nextFireAt {
-                Text(L("Next: {0}", "\(L10n.date(next, dateStyle: .short, timeStyle: .short))")).font(.caption)
-            }
-            if let started = state?.startedAt {
-                Text(L("Last: {0} · {1}", "\(L10n.date(started, dateStyle: .short))", "\(state?.message ?? state?.outcome?.title ?? "")"))
-                    .font(.caption).foregroundStyle(state?.outcome == .launchFailed || state?.outcome == .failed ? Color.red : Color.secondary)
-                    .textSelection(.enabled)
-            }
-            if let issue = schedules.issue(for: task) { Text(issue).font(.caption).foregroundStyle(.red) }
-            HStack {
-                Button(L("Edit")) { editing = task }.disabled(running)
-                Button(task.enabled ? L("Pause") : L("Enable")) {
-                    schedules.perform { try schedules.setEnabled(task, !task.enabled) }
-                }.disabled(!task.enabled && completed)
-                    .help(L("Pausing affects future runs only. Edit a triggered one-time task to set a new execution time."))
-                if running {
-                    Button(L("View Output")) {
-                        if let id = runner.sessions.first(where: { $0.recordID == state?.runID })?.id { runner.select(id); showOutput() }
-                    }
-                    Button(L("Stop")) {
-                        runner.sessions.first(where: { $0.recordID == state?.runID })?.stop()
-                    }
+                    .font(.title3)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(task.name).font(.headline)
+                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                    Text("\(task.workspaceName) · \(task.item.name)")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                 }
-                Spacer()
-                Button(role: .destructive) { deleting = task } label: { Image(systemName: "trash") }
-                    .disabled(running).help(L("Delete Scheduled Task"))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(running ? L("Executing") : !task.enabled ? L("Paused") : completed ? L("Triggered") : L("Enabled"))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(running ? Color.orange : Color.secondary)
+                    .padding(.horizontal, 8).padding(.vertical, 4)
+                    .background(running ? Color.orange.opacity(0.1) : Color.secondary.opacity(0.08),
+                                in: Capsule())
+                    .fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Label(task.summary, systemImage: "calendar")
+                    .font(.callout)
+                if task.enabled, let next = state?.nextFireAt {
+                    Text(L("Next: {0}", "\(L10n.date(next, dateStyle: .short, timeStyle: .short))"))
+                        .font(.caption)
+                }
+                if let started = state?.startedAt {
+                    Text(L("Last: {0} · {1}", "\(L10n.date(started, dateStyle: .short))", "\(state?.message ?? state?.outcome?.title ?? "")"))
+                        .font(.caption).foregroundStyle(state?.outcome == .launchFailed || state?.outcome == .failed ? Color.red : Color.secondary)
+                        .textSelection(.enabled)
+                }
+                if let issue = schedules.issue(for: task) {
+                    Label(issue, systemImage: "exclamationmark.circle")
+                        .font(.caption).foregroundStyle(.red).textSelection(.enabled)
+                }
+            }
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    taskActions(task, completed: completed).fixedSize()
+                    Spacer(minLength: 8)
+                    if running { runningActions(runID: state?.runID).fixedSize() }
+                    deleteButton(task, running: running)
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        taskActions(task, completed: completed)
+                        Spacer()
+                        deleteButton(task, running: running)
+                    }
+                    if running { runningActions(runID: state?.runID) }
+                }
             }.controlSize(.small)
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12))
     }
+
+    private func taskActions(_ task: ScheduledTask, completed: Bool) -> some View {
+        HStack(spacing: 10) {
+            Button(L("Edit")) { editing = task }.disabled(schedules.runningIDs.contains(task.id))
+            Button(task.enabled ? L("Pause") : L("Enable")) {
+                schedules.perform { try schedules.setEnabled(task, !task.enabled) }
+            }.disabled(!task.enabled && completed)
+                .help(L("Pausing affects future runs only. Edit a triggered one-time task to set a new execution time."))
+        }
+    }
+
+    private func runningActions(runID: String?) -> some View {
+        HStack(spacing: 10) {
+            Button(L("View Output")) {
+                if let id = runner.sessions.first(where: { $0.recordID == runID })?.id {
+                    runner.select(id)
+                    showOutput()
+                }
+            }
+            Button(L("Stop")) {
+                runner.sessions.first(where: { $0.recordID == runID })?.stop()
+            }
+        }
+    }
+
+    private func deleteButton(_ task: ScheduledTask, running: Bool) -> some View {
+        Button(role: .destructive) { deleting = task } label: { Image(systemName: "trash") }
+            .disabled(running).help(L("Delete Scheduled Task"))
+            .accessibilityLabel(L("Delete Scheduled Task"))
+    }
+
 }
 
 struct ScheduleEditor: View {

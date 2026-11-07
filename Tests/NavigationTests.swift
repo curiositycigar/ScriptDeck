@@ -40,6 +40,8 @@ import SwiftUI
     func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
     layout()
     let table = descendants(host).compactMap { $0 as? NSTableView }.first!
+    check(table.selectionHighlightStyle == .none,
+          "Sidebar uses the shared row background instead of the native blue selection")
     let sidebarFrame = table.convert(table.bounds, to: host)
     let viewport = table.enclosingScrollView!
     let contentBounds = host.convert(window.contentLayoutRect, from: nil)
@@ -67,6 +69,8 @@ import SwiftUI
     layout()
     check(navigation.destination == .scripts && navigation.highlightedScript(in: session) == script.id,
           "再次点击同一个脚本也能从定时页面返回并高亮")
+    check(table.selectionHighlightStyle == .none,
+          "Returning to a script keeps the native selection highlight disabled")
     check(formScroll?.window === window && formScroll?.contentView.bounds.origin == formOffset,
           "往返定时页面后保留原表单实例及滚动位置")
     check(session.values[script.id]?["p1"] == "保留的参数", "切换页面保留已输入参数")

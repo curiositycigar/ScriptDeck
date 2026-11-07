@@ -435,3 +435,9 @@
 "WORKSPACES" = "工作空间";
 "Workspace: {0}" = "工作空间：{0}";
 "Workspace" = "工作空间";
+
+"Scheduling Notes" = "调度说明";
+"{0} scheduled tasks" = "{0} 个定时任务";
+
+"Select a script to run" = "选择脚本执行";
+"Command: {0}" = "执行命令：{0}";

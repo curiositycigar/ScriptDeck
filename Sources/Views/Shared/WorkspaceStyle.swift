@@ -1,7 +1,25 @@
 import SwiftUI
+import AppKit
+
+enum WorkspaceStyle {
+    static let selectionColor = Color.accentColor.opacity(0.12)
+}
 
 // Materials belong to navigation and actions; readable content stays on solid system surfaces.
 extension View {
+    func workspaceListSelection(_ selected: Bool) -> some View {
+        self
+            .foregroundStyle(Color(nsColor: .labelColor))
+            .listRowBackground(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(selected ? WorkspaceStyle.selectionColor : Color.clear)
+            )
+    }
+
+    func workspaceListAppearance() -> some View {
+        self.background(NativeListSelectionSuppression())
+    }
+
     @ViewBuilder func workspaceGlass() -> some View {
         if #available(macOS 26.0, *) {
             self.glassEffect(.regular, in: .rect(cornerRadius: 16))
@@ -15,6 +33,60 @@ extension View {
             self.buttonStyle(.glassProminent)
         } else {
             self.buttonStyle(.borderedProminent)
+        }
+    }
+}
+
+// List owns an AppKit selection highlight that listItemTint does not replace on macOS.
+// Keep native selection and keyboard navigation, and draw the row background in SwiftUI.
+private struct NativeListSelectionSuppression: NSViewRepresentable {
+    func makeNSView(context: Context) -> SelectionView { SelectionView() }
+
+    func updateNSView(_ nsView: SelectionView, context: Context) {
+        nsView.suppressNativeHighlight()
+    }
+
+    final class SelectionView: NSView {
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func layout() {
+            super.layout()
+            suppressNativeHighlight()
+        }
+
+        override func viewDidMoveToSuperview() {
+            super.viewDidMoveToSuperview()
+            scheduleUpdate()
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            scheduleUpdate()
+        }
+
+        private func scheduleUpdate() {
+            DispatchQueue.main.async { [weak self] in self?.suppressNativeHighlight() }
+        }
+
+        func suppressNativeHighlight() {
+            func table(in view: NSView) -> NSTableView? {
+                if let table = view as? NSTableView { return table }
+                for child in view.subviews {
+                    if let found = table(in: child) { return found }
+                }
+                return nil
+            }
+            var ancestor = superview
+            while let view = ancestor {
+                if let table = table(in: view) {
+                    if table.selectionHighlightStyle != .none {
+                        table.selectionHighlightStyle = .none
+                        table.needsDisplay = true
+                    }
+                    return
+                }
+                ancestor = view.superview
+            }
         }
     }
 }
