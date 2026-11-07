@@ -3,7 +3,7 @@ import AppKit
 import SwiftTerm
 import Darwin
 
-/// Terminal input goes directly to the PTY; the app never intercepts passwords.
+/// Keyboard input and explicitly requested credential fills go directly to the PTY.
 final class RunnerTerminalView: TerminalView, TerminalViewDelegate, LocalProcessDelegate {
     var acceptsInput = false
     private(set) var process: LocalProcess!
@@ -36,6 +36,11 @@ final class RunnerTerminalView: TerminalView, TerminalViewDelegate, LocalProcess
     }
     func startProcess(executable: String, args: [String], environment: [String], currentDirectory: String) {
         process.startProcess(executable: executable, args: args, environment: environment, currentDirectory: currentDirectory)
+    }
+    var isInputEchoDisabled: Bool {
+        var attributes = termios()
+        guard process.childfd >= 0, tcgetattr(process.childfd, &attributes) == 0 else { return false }
+        return attributes.c_lflag & tcflag_t(ECHO) == 0
     }
     func send(source: TerminalView, data: ArraySlice<UInt8>) {
         guard acceptsInput else { return }

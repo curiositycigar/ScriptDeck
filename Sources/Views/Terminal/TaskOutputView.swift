@@ -8,6 +8,7 @@ struct TaskOutputView: View {
     @State private var showHistory = false
     @State private var showTaskList = true
     @State private var completedExpanded = true
+    @State private var credentialSession: ExecutionSession?
 
     var body: some View {
         Group {
@@ -15,6 +16,12 @@ struct TaskOutputView: View {
         }
         .sheet(isPresented: $showHistory) {
             ExecutionHistoryView(workspaces: workspaces, runner: runner)
+        }
+        .sheet(item: $credentialSession) { session in
+            CredentialManagerView(runner: runner,
+                                  target: session.workspaceID.flatMap { workspace in
+                                      session.scriptID.map { CredentialTarget(workspaceID: workspace, scriptID: $0) }
+                                  }, scriptName: session.activeName, session: session)
         }
     }
 
@@ -56,6 +63,9 @@ struct TaskOutputView: View {
                 Image(systemName: "terminal").foregroundStyle(.tint)
                 Text(L("Run Output")).font(.callout.weight(.semibold))
             }
+            .padding(.horizontal, 6)
+            .frame(minHeight: 34)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help(outputExpanded ? L("Collapse Output") : L("Expand Output"))
@@ -104,7 +114,9 @@ struct TaskOutputView: View {
                     } label: {
                         Text(L("Completed · {0}", "\(runner.completedSessions.count)"))
                             .font(.caption).foregroundStyle(.secondary)
-                    }.padding(.top, 6)
+                    }
+                    .disclosureGroupStyle(WorkspaceDisclosureStyle())
+                    .padding(.top, 6)
                 }
             }.padding(12)
         }
@@ -165,6 +177,11 @@ struct TaskOutputView: View {
 
     private var terminalActions: some View {
         HStack(spacing: 10) {
+            Button { credentialSession = runner.selectedSession } label: { Image(systemName: "key") }
+                .help(L("Fill Password from Keychain (⇧⌘K)"))
+                .accessibilityLabel(L("Fill Password from Keychain"))
+                .keyboardShortcut("k", modifiers: [.command, .shift])
+                .disabled(!runner.selectedIsRunning || runner.selectedSession.isBackgroundExecution || runner.stopping)
             if let issue = runner.historyIssue {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                     .help(issue).accessibilityLabel(issue)

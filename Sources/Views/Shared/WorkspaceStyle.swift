@@ -5,6 +5,62 @@ enum WorkspaceStyle {
     static let selectionColor = Color.accentColor.opacity(0.12)
 }
 
+struct WorkspaceIconButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        IconButton(configuration: configuration)
+    }
+
+    private struct IconButton: View {
+        let configuration: ButtonStyle.Configuration
+        @State private var hovered = false
+        @Environment(\.isEnabled) private var isEnabled
+
+        var body: some View {
+            configuration.label
+                .frame(width: 30, height: 30)
+                .background(Color.primary.opacity(isEnabled ? (configuration.isPressed ? 0.18 : hovered ? 0.09 : 0.04) : 0.02),
+                            in: RoundedRectangle(cornerRadius: 6))
+                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary.opacity(0.10)))
+                .opacity(isEnabled ? 1 : 0.45)
+                .scaleEffect(configuration.isPressed ? 0.94 : 1)
+                .contentShape(Rectangle())
+                .onHover { hovered = $0 }
+                .animation(.easeOut(duration: 0.12), value: hovered)
+                .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+        }
+    }
+}
+
+struct WorkspaceDisclosureStyle: DisclosureGroupStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                configuration.isExpanded.toggle()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: configuration.isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 12)
+                    configuration.label
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 6)
+                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(configuration.isExpanded ? L("Expanded") : L("Collapsed"))
+            if configuration.isExpanded {
+                configuration.content
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 20)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 // Materials belong to navigation and actions; readable content stays on solid system surfaces.
 extension View {
     func workspaceListSelection(_ selected: Bool) -> some View {

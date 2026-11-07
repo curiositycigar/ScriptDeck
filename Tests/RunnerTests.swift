@@ -27,6 +27,7 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
             print("导航检查通过。")
             return
         }
+        try runCredentialSelfTests(root: root)
         let source = root.appendingPathComponent("上传 ' $(touch should-not-exist).sh")
         try """
         #!/bin/bash
@@ -288,6 +289,15 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         let preserved = try Data(contentsOf: loaded.fileURL!)
         check(preserved == corrupt, "损坏配置原文保留")
         let historyRoot = root.appendingPathComponent("history-deletion")
+        var historyCalendar = Calendar(identifier: .gregorian)
+        historyCalendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let historyNow = historyCalendar.date(from: DateComponents(year: 2024, month: 3, day: 31, hour: 12))!
+        check(historyNow.timeIntervalSince(HistoryClearAge.day.cutoff(relativeTo: historyNow)) == 86_400 &&
+              historyNow.timeIntervalSince(HistoryClearAge.week.cutoff(relativeTo: historyNow)) == 604_800,
+              "History age shortcuts use elapsed 24-hour and seven-day windows")
+        let monthCutoff = historyCalendar.date(from: DateComponents(year: 2024, month: 2, day: 29, hour: 12))!
+        check(HistoryClearAge.month.cutoff(relativeTo: historyNow, calendar: historyCalendar) == monthCutoff,
+              "History month shortcut handles month-end and leap-year boundaries")
         try FileManager.default.createDirectory(at: historyRoot, withIntermediateDirectories: true)
         func historyFixture(_ name: String, logFilename: String? = nil) throws -> HistoryEntry {
             let record = ExecutionRecord(id: name, scriptID: "test", scriptName: name,

@@ -25,10 +25,12 @@ The interface supports **English** and **Simplified Chinese**, following the sys
 
 - Independent workspaces with nested folders, search, script import, and configuration editing.
 - Positional arguments, named arguments, boolean flags, file/folder pickers, and labeled selection options.
+- Single-row parameter fields with `*` for required values, plus script details in the information popover beside the script name.
 - Multiple simultaneous runs, each with its own interactive terminal, status, duration, and log. Interrupt and stop actions apply to the selected session.
 - One-time, daily, weekly, and fixed-interval schedules backed by macOS `launchd`. Create them from **All Scheduled Tasks** or **Schedule…** on a script's run bar.
 - Menu bar access. Closing the window keeps the app running; scheduled tasks can also run after the app quits.
-- Local execution history with filters, paginated logs, export, and deletion. Removing a completed session from the output list preserves its history.
+- Local execution history with filters, paginated logs, export, and deletion, including clearing records older than 24 hours, seven days, or one calendar month. Removing a completed session from the output list preserves its history.
+- macOS Keychain password storage, local script associations, and explicit password filling into the selected interactive session with **⇧⌘K**.
 
 Scheduled tasks save a snapshot of the script configuration and parameters, run without keyboard input, and prevent overlapping instances of the same schedule. The Mac must be powered on and the user logged in. Tasks do not wake the Mac or run during sleep; at most one missed occurrence is caught up afterward. Pausing cancels future runs; stopping the current run is a separate action. Edit or delete a schedule after its active run ends.
 
@@ -70,7 +72,11 @@ MyScripts/
 
 External configuration edits are detected automatically. Invalid or conflicting edits produce a warning and preserve the last valid in-memory configuration. Importing a script from outside the library copies it into `scripts/`; removing a script configuration or workspace registration preserves the underlying files.
 
-Logs and metadata are saved beside each script in `logs/<script filename>/`. Log creation must succeed before execution starts. History deletion permanently removes the corresponding `.log` and `.json` files after confirmation, skipping active or still-saving records. Each log starts with the assembled execution command, including the interpreter, script path, and shell-quoted arguments. Keystrokes are not separately recorded, but script output and echoed input appear in logs. Avoid storing or printing passwords.
+Logs and metadata are saved beside each script in `logs/<script filename>/`. Log creation must succeed before execution starts. History deletion permanently removes the corresponding `.log` and `.json` files after confirmation, skipping active or still-saving records. Each log starts with the assembled execution command, including the interpreter, script path, and shell-quoted arguments. Keystrokes are not separately recorded, but script output and echoed input appear in logs. Avoid putting passwords in script arguments or printing them.
+
+The history **Clear** menu can remove filtered results, all loaded history, or records older than 24 hours, seven days, or one calendar month. Age is measured from each run's start time. Age-based cleanup applies across all loaded workspaces regardless of filters; confirmation shows the cutoff and record count. Run Output hides empty groups and preserves each terminal's contents when switching records. Its task-list footer removes session records without deleting saved history or logs.
+
+Use the key button beside a script's name to save a password in macOS Keychain and associate it with that script. Settings → Credentials manages saved credentials; names and workspace/script associations stay in local app preferences, outside the script library. A credential can be associated with several scripts. In a running manual session, click the Run Output key button or press **⇧⌘K**, select a credential, and choose **Fill Password**. Associated credentials appear first. The optional Return submits the input immediately. Filling requires the original session to remain selected and running, with terminal input echo disabled (for example, Bash `read -s`); scheduled background runs cannot receive input. Keychain may request system authorization. Filled passwords go directly to the PTY, without the clipboard or command arguments, but a script that prints the password can still expose it in output and logs.
 
 Schedule definitions and the standalone helper live in `~/Library/Application Support/ScriptDeck/Schedules/`; LaunchAgent files live in `~/Library/LaunchAgents/com.lucasyou.ScriptDeck.schedule.<ID>.plist`. Moving the app does not invalidate existing schedules. Moving scripts requires updating their schedules.
 
@@ -84,5 +90,7 @@ bash test.sh     # Run self-checks with temporary fixtures
 ```
 
 Outputs are `dist/ScriptDeck.app` and `dist/ScriptDeck-<version>.zip`. Packaging includes the app, example library, both README languages, and English maintenance documentation. It does not launch scripts or install schedules.
+
+`Resources/Info.plist` is the version source: `CFBundleShortVersionString` is the public version and `CFBundleVersion` is the build number. Update both manually for a release; building does not increment either value. The build copies this file into the app, and packaging uses the public version in the ZIP filename.
 
 See [Architecture](Docs/Architecture.md) for maintenance and testing details, [Localization](Docs/Localization.md) for translation guidance, and [Icon Design](Docs/Icon-design.md) for icon assets.

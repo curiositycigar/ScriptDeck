@@ -82,6 +82,32 @@ final class ProcessRunner: ObservableObject {
     func stop(force: Bool = false) { selectedSession.stop(force: force) }
     func focusTerminal() { selectedSession.focusTerminal() }
 
+    func validateCredentialTarget(_ id: UUID) throws {
+        guard selectedSessionID == id, let session = sessions.first(where: { $0.id == id }),
+              session.isRunning, !session.stopping, !session.isBackgroundExecution,
+              session.terminalView.acceptsInput else {
+            throw RunnerError(message: L("The target terminal changed or is no longer accepting input."))
+        }
+        guard session.terminalView.isInputEchoDisabled else {
+            throw RunnerError(message: L("Password not sent. Wait until the script requests hidden password input."))
+        }
+    }
+
+    func fillPassword(_ password: String, sessionID: UUID, appendReturn: Bool) async throws {
+        try CredentialStore.validatePassword(password)
+        try validateCredentialTarget(sessionID)
+        let terminal = selectedSession.terminalView
+        let data = Array((password + (appendReturn ? "\r" : "")).utf8)
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            terminal.process.send(data: data[...]) { result in
+                switch result {
+                case .success(let written) where written == data.count: continuation.resume()
+                default: continuation.resume(throwing: RunnerError(message: L("Unable to fill the password. Check the terminal before trying again.")))
+                }
+            }
+        }
+    }
+
     func select(_ id: UUID) {
         guard selectedSessionID != id, sessions.contains(where: { $0.id == id }) else { return }
         selectedSessionID = id

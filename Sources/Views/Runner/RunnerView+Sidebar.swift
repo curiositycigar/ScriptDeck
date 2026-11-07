@@ -126,7 +126,13 @@ extension RunnerView {
             }
         } label: { Label { Text(group.displayName).font(.callout.weight(.medium)) } icon: {
             Image(systemName: "folder").foregroundStyle(.tint)
-        }.contextMenu {
+        }
+        .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            expandedGroups[group.id] = !(expandedGroups[group.id] ?? true)
+        }
+        .contextMenu {
             Button(L("New Subfolder…"), systemImage: "folder.badge.plus") { beginFolderCreation(parent: group.id) }
             Button(L("New Script…"), systemImage: "plus") {
                 var item = ScriptItem()

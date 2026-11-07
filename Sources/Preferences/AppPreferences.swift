@@ -1,7 +1,7 @@
 import Foundation
 import Combine
 
-enum SettingsTab: Hashable { case general, workspaces, terminal }
+enum SettingsTab: Hashable { case general, workspaces, terminal, credentials }
 
 final class AppPreferences: ObservableObject {
     @Published var language: AppLanguage {

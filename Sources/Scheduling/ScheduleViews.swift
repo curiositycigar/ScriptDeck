@@ -39,7 +39,9 @@ struct ScheduleDashboard: View {
                         Text(L("Your Mac must be on and you must be logged in. Tasks do not run during sleep; at most one missed run is caught up afterward. Each schedule prevents overlapping runs. Background tasks do not support keyboard input."))
                             .fixedSize(horizontal: false, vertical: true)
                             .padding(.top, 10)
-                    }.font(.caption).foregroundStyle(.secondary)
+                    }
+                    .disclosureGroupStyle(WorkspaceDisclosureStyle())
+                    .font(.caption).foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: 800, alignment: .leading)
                 .frame(maxWidth: .infinity)

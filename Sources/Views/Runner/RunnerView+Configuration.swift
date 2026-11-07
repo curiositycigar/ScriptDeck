@@ -50,7 +50,6 @@ extension RunnerView {
                             Text(L("Run Parameters")).font(.headline)
                             parameterFields(item)
                         }
-                        scriptDetails(item)
                     }
                     .frame(maxWidth: 800, alignment: .leading)
                     .frame(maxWidth: .infinity)
@@ -78,8 +77,27 @@ extension RunnerView {
                 .frame(width: 40, height: 40)
                 .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
             VStack(alignment: .leading, spacing: 4) {
-                Text(item.name).font(.title2.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(item.name).font(.title2.weight(.semibold))
+                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+                    Button { showScriptDetails.toggle() } label: {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 15))
+                            .frame(width: 32, height: 32)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .help(L("Script Details")).accessibilityLabel(L("Script Details"))
+                    .popover(isPresented: $showScriptDetails, arrowEdge: .bottom) {
+                        scriptDetails(item)
+                    }
+                    Button { credentialScript = item } label: {
+                        Image(systemName: "key").font(.system(size: 15))
+                            .frame(width: 32, height: 32).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .help(L("Script Credentials")).accessibilityLabel(L("Script Credentials"))
+                }
                 Text((item.category.isEmpty || item.category == "未分组") ? L("Ungrouped") : item.category.replacingOccurrences(of: "/", with: "  ›  "))
                     .font(.caption).foregroundStyle(.secondary).lineLimit(1)
                     .help(item.category)
@@ -91,24 +109,60 @@ extension RunnerView {
     }
 
     private func scriptDetails(_ item: ScriptItem) -> some View {
-        DisclosureGroup(L("Script Details"), isExpanded: $detailsExpanded) {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(store.resolved(item).path).font(.caption.monospaced()).textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true)
-                LabeledContent(L("Interpreter"), value: item.interpreter == "direct" ? L("Run directly") : item.interpreter)
-                LabeledContent(L("Working Directory"), value: store.resolved(item).workingDirectory.isEmpty ? L("Script's folder") : store.resolved(item).workingDirectory)
-                    .textSelection(.enabled)
-                HStack {
-                    Button(L("Copy Path")) {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(store.resolved(item).path, forType: .string)
+        let resolved = store.resolved(item)
+        return VStack(alignment: .leading, spacing: 16) {
+            Label(L("Script Details"), systemImage: "info.circle")
+                .font(.headline)
+            Text(item.name).font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 12) {
+                    scriptDetailRow(L("Script Path"), value: resolved.path)
+                    HStack(spacing: 10) {
+                        Button {
+                            NSPasteboard.general.clearContents()
+                            scriptPathCopied = NSPasteboard.general.setString(resolved.path, forType: .string)
+                        } label: {
+                            Image(systemName: scriptPathCopied ? "checkmark" : "doc.on.doc")
+                                .foregroundStyle(scriptPathCopied ? Color.green : Color.secondary)
+                        }
+                            .help(scriptPathCopied ? L("Copied") : L("Copy Path"))
+                            .accessibilityLabel(L("Copy Path"))
+                            .accessibilityValue(scriptPathCopied ? L("Copied") : "")
+                        Button {
+                            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: resolved.path)])
+                        } label: { Image(systemName: "folder") }
+                            .help(L("Show in Finder")).accessibilityLabel(L("Show in Finder"))
                     }
-                    Button(L("Show in Finder")) {
-                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: store.resolved(item).path)])
-                    }
+                    .buttonStyle(WorkspaceIconButtonStyle())
+                    .foregroundStyle(.secondary)
                 }
-            }.padding(.top, 10)
-        }.font(.caption).foregroundStyle(.secondary)
+                Divider()
+                scriptDetailRow(L("Interpreter"), value: item.interpreter == "direct" ? L("Run directly") : item.interpreter)
+                scriptDetailRow(L("Working Directory"), value: resolved.workingDirectory.isEmpty ? L("Script's folder") : resolved.workingDirectory)
+            }
+        }
+        .padding(20)
+        .frame(width: 560, alignment: .leading)
+        .task(id: scriptPathCopied) {
+            guard scriptPathCopied else { return }
+            do {
+                try await Task.sleep(nanoseconds: 1_500_000_000)
+                scriptPathCopied = false
+            } catch { }
+        }
+        .onDisappear { scriptPathCopied = false }
+    }
+
+    private func scriptDetailRow(_ title: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title).font(.caption).foregroundStyle(.secondary)
+                .frame(width: 110, alignment: .leading)
+            Text(value).font(.caption.monospaced())
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     func parameterFields(_ item: ScriptItem) -> some View {

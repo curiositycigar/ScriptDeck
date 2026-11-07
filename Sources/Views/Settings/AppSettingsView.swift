@@ -21,6 +21,8 @@ struct AppSettingsView: View {
             .tabItem { Label(L("General"), systemImage: "gearshape") }.tag(SettingsTab.general)
             WorkspaceSettingsView(workspaces: workspaces, runner: runner)
                 .tabItem { Label(L("Workspaces"), systemImage: "square.stack.3d.up") }.tag(SettingsTab.workspaces)
+            CredentialManagerView(runner: runner, canDismiss: false)
+                .tabItem { Label(L("Credentials"), systemImage: "key") }.tag(SettingsTab.credentials)
             Form {
                 Section {
                     WorkspaceSectionTitle(title: L("Terminal Appearance"), subtitle: L("Adjust fonts and scrollback for all workspaces."))

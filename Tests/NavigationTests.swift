@@ -40,6 +40,8 @@ import SwiftUI
     func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
     layout()
     let table = descendants(host).compactMap { $0 as? NSTableView }.first!
+    check(table.numberOfRows >= 2,
+          "Sidebar folders and scripts remain separate selectable rows")
     check(table.selectionHighlightStyle == .none,
           "Sidebar uses the shared row background instead of the native blue selection")
     let sidebarFrame = table.convert(table.bounds, to: host)

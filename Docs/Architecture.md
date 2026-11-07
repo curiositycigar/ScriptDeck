@@ -11,6 +11,7 @@ ScriptDeck is a single-module SwiftUI/AppKit macOS app built with Swift Package 
 | `Sources/Library/` | Library persistence, import, validation, and external change detection |
 | `Sources/Workspaces/` | Local workspace registry and per-workspace browsing state |
 | `Sources/Execution/` | Argument validation, command construction, sessions, PTYs, and stop control |
+| `Sources/Credentials/` | Keychain access, local credential metadata, script associations, and credential management UI |
 | `Sources/History/` | Streaming logs, ANSI filtering, metadata, discovery, pagination, and deletion |
 | `Sources/Scheduling/` | Schedule rules, atomic storage, LaunchAgents, background execution, and management UI |
 | `Sources/Preferences/` | Persistent app preferences |
@@ -32,6 +33,8 @@ Root shell scripts forward to `Scripts/`. `.build/` and `dist/` are generated an
 `ScriptRunnerApp` composes `WorkspaceStore`, `AppPreferences`, `ProcessRunner`, and `ScheduleStore`. `EntryPoint` routes helper modes before starting SwiftUI. Models validate and encode configuration without depending on views or process management. Library and execution services own filesystem and process operations; views call those services.
 
 `RunnerView.swift` owns browsing state, layout, and lifecycle. Its extensions separate workspace actions, navigation, configuration, and execution actions while sharing internal state. Extract reusable controls as independent views with values, bindings, or callbacks.
+
+The configuration pane presents one parameter per row with `*` markers for required values. The script-name information button opens a details popover with selectable paths and icon actions; path copying briefly displays a confirmation. Disclosure headers have enlarged hit areas and toggle from their names. Sidebar folders retain native disclosure groups and independent list rows; the generic custom disclosure style must not wrap the sidebar tree into a single selectable row.
 
 Keep JSON operations in library/scheduling services and command construction in execution services. Update the models, canonical schema, example configuration, and documentation together when changing configuration fields. Extra JSON fields are not preserved by the app editor. Version and build numbers live in `Resources/Info.plist`.
 
@@ -55,6 +58,12 @@ The helper enters the requested directory and loads a login Zsh environment befo
 
 SwiftTerm's MIT license is included in `Resources/ThirdPartyNotices.txt`. When upgrading it, update the exact package version, lockfile, notices, and toolchain requirements. PortableGraphics is disabled and unused dependencies are pruned; macOS uses native image support.
 
+## Credentials
+
+`CredentialStore` stores passwords as nonsynchronizing generic-password items in the macOS Keychain under the `ScriptDeck.ScriptCredentials` service, keyed by opaque UUIDs. Names and `(workspaceID, scriptID)` associations are encoded in local UserDefaults; neither secrets nor associations are added to library JSON, schedule definitions, or release packages. Secrets are retrieved only for an explicit fill action. Keychain operations run off the main actor; failed writes do not publish metadata, and edits with an empty password preserve the saved secret. Deleting a credential removes its Keychain item and local associations.
+
+The script header and Settings expose credential management. Run Output captures a specific execution session when opening its credential sheet. `ProcessRunner` validates that the same manual session remains selected, running, and accepting input both before Keychain retrieval and immediately before sending. `tcgetattr` must report ECHO disabled; missing PTYs, completed tasks, switched records, and background schedules are rejected. Passwords cannot contain line breaks or terminal control characters. A fill sends UTF-8 bytes directly through SwiftTerm's PTY writer, optionally followed by Return, and checks the write result. It does not use the clipboard, command-line arguments, or log events. This does not prevent a script from explicitly printing its input.
+
 ## Logs and history
 
 `RunLogWriter` creates `.log`/`.json` pairs in `logs/<original script filename>/` beside the script, using timestamps and UUIDs. Metadata includes workspace and script snapshots, times, outcome, exit code, and log filename; it omits command arguments. A log creation failure prevents execution. Later write failures appear in the output panel. Metadata is replaced atomically at completion.
@@ -63,7 +72,7 @@ Manual and scheduled logs begin with the actual interpreter, script path, and ar
 
 `HistoryDirectories` indexes log locations in UserDefaults. `HistoryViewModel` also discovers logs for currently configured scripts, validates same-directory `.log` paths, deduplicates UUIDs, and sorts by start time. Logs use 256 KiB pages with UTF-8 boundary handling. Generation checks discard stale asynchronous responses. Nonactive records left with a running outcome are shown as interrupted.
 
-History supports workspace/script filters, search, refresh, pagination, and Finder access. Permanent deletion requires confirmation, validates paths and record identity, skips active or saving records, and reports partial failures. Clearing a terminal or removing a workspace does not delete logs.
+History supports workspace/script filters, search, refresh, pagination, and Finder access. The Clear menu offers filtered results, all loaded history, and records started before cutoffs of 24 hours, seven elapsed days, or one calendar month. Age-based actions operate across loaded workspaces regardless of current filters, use a strict start-time comparison, and capture their cutoff and target list for confirmation. Permanent deletion requires confirmation, validates paths and record identity, skips active or saving records, and reports partial failures. Removing a session or workspace does not delete logs.
 
 ## System scheduling
 
@@ -81,6 +90,8 @@ The Mac must be on and the user logged in; scheduling does not wake a sleeping M
 
 Use Swift 6.3 or later. `bash package.sh` builds, signs, and packages without running the app or tests. `bash test.sh` explicitly builds self-checks with `RUNNER_SELF_CHECKS=1` and runs temporary fixtures. Build caches remain inside `.build/`.
 
-Tests normally simulate system services. `RUNNER_TEST_LAUNCHD=1 bash test.sh` additionally registers, triggers, and unloads a temporary real LaunchAgent; it requires access to the current user's GUI domain. `RUNNER_CAPTURE_UI=1` captures native layout images in `/tmp`. No test should run a user's real scripts or register their schedules.
+Release versions are maintained manually in `Resources/Info.plist`: update `CFBundleShortVersionString` and increment `CFBundleVersion` before packaging. `Scripts/build.sh` copies the plist into the application bundle; `Scripts/package.sh` reads the public version for the archive name. Before publishing with `gh`, verify the archived plist, code signature, ZIP integrity, public example allowlist, private-file exclusions, and SHA-256 checksum. Release assets contain the versioned ZIP and its checksum file.
+
+Tests normally simulate system services. `RUNNER_TEST_LAUNCHD=1 bash test.sh` additionally registers, triggers, and unloads a temporary real LaunchAgent; it requires access to the current user's GUI domain. `RUNNER_TEST_KEYCHAIN=1 bash test.sh` verifies real Keychain add/read/update/delete operations in an isolated service and cleans up its fixture. Ordinary credential tests use an in-memory vault plus temporary PTY scripts. `RUNNER_CAPTURE_UI=1` captures native layout images in `/tmp`. No test should run a user's real scripts or register their schedules.
 
 See [Localization](Localization.md) for string resources, language selection, and translation checks.

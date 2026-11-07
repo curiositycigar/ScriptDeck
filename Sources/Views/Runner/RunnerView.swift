@@ -13,7 +13,9 @@ struct RunnerView: View {
     @ObservedObject var navigation: WorkspaceNavigation
     @State var schedulingItem: ScheduledTask?
     @Environment(\.openWindow) var openWindow
-    @State var detailsExpanded = false
+    @State var showScriptDetails = false
+    @State var scriptPathCopied = false
+    @State var credentialScript: ScriptItem?
     @State var validatedScripts: Set<String> = []
     @FocusState var focusedParameter: String?
     @State var search = ""
@@ -78,7 +80,7 @@ struct RunnerView: View {
             toggleSidebar: { preferences.sidebarVisible.toggle() }, toggleOutput: { outputExpanded.toggle() }
         ))
         .onChange(of: session.selectedID) { _ in
-            detailsExpanded = false
+            showScriptDetails = false
             focusedParameter = nil
             selectedSidebarFolder = nil
         }
@@ -97,6 +99,11 @@ struct RunnerView: View {
             }
         }
         .sheet(isPresented: $creatingFolder) { folderCreationSheet }
+        .sheet(item: $credentialScript) { item in
+            CredentialManagerView(runner: runner,
+                                  target: CredentialTarget(workspaceID: workspaceInfo.id, scriptID: item.id),
+                                  scriptName: item.name)
+        }
         .sheet(item: $schedulingItem) { task in
             ScheduleEditor(workspaces: workspaces, initial: task) { try schedules.save($0) }
         }

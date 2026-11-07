@@ -65,6 +65,14 @@ struct ExecutionHistoryView: View {
                     Button(L("Clear Filtered Results…"), role: .destructive) { requestDeletion(filtered, scope: .filtered) }
                         .disabled(deletable(filtered).isEmpty)
                     Divider()
+                    ForEach(HistoryClearAge.allCases, id: \.self) { age in
+                        Button(age.title, role: .destructive) {
+                            let cutoff = age.cutoff()
+                            requestDeletion(model.entries.filter { $0.record.startedAt < cutoff }, scope: .olderThan(cutoff))
+                        }
+                        .disabled(deletable(model.entries.filter { $0.record.startedAt < age.cutoff() }).isEmpty)
+                    }
+                    Divider()
                     Button(L("Clear All History…"), role: .destructive) { requestDeletion(model.entries, scope: .all) }
                         .disabled(deletable(model.entries).isEmpty)
                 } label: { Label(L("Clear"), systemImage: "trash.slash") }
@@ -269,7 +277,7 @@ struct ExecutionHistoryView: View {
 }
 
 private struct HistoryDeletionRequest {
-    enum Scope { case selected, filtered, all }
+    enum Scope { case selected, filtered, all, olderThan(Date) }
     let entries: [HistoryEntry]
     let scope: Scope
     let criteria: String
@@ -279,6 +287,7 @@ private struct HistoryDeletionRequest {
         case .selected: return L("Delete This Execution Record?")
         case .filtered: return L("Clear Filtered Results?")
         case .all: return L("Clear All Execution History?")
+        case .olderThan: return L("Clear Older Execution History?")
         }
     }
     var message: String {
@@ -287,6 +296,9 @@ private struct HistoryDeletionRequest {
         case .selected: range = L("Delete this execution record for “{0}”.", "\(entries.first?.record.scriptName ?? "")")
         case .filtered: range = L("Delete {0} records matching the current filters.\n", "\(entries.count)") + (criteria.isEmpty ? L("No filters are currently set.") : criteria)
         case .all: range = L("Delete all {0} loaded history records across workspaces, regardless of current filters or search.", "\(entries.count)")
+        case .olderThan(let cutoff):
+            range = L("Delete {0} loaded history records started before {1} across workspaces, regardless of current filters or search.",
+                      "\(entries.count)", L10n.date(cutoff, dateStyle: .full, timeStyle: .short))
         }
         return range + L("\n\nThe corresponding .log and .json files will be permanently deleted. Scripts and configuration files will be preserved. Running tasks and logs still being saved will be skipped. Records in unavailable folders cannot be removed.")
     }

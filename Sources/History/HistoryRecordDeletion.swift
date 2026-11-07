@@ -1,5 +1,25 @@
 import Foundation
 
+enum HistoryClearAge: CaseIterable {
+    case day, week, month
+
+    var title: String {
+        switch self {
+        case .day: return L("Clear Older Than 24 Hours…")
+        case .week: return L("Clear Older Than 7 Days…")
+        case .month: return L("Clear Older Than One Month…")
+        }
+    }
+
+    func cutoff(relativeTo now: Date = Date(), calendar: Calendar = .current) -> Date {
+        switch self {
+        case .day: return now.addingTimeInterval(-24 * 60 * 60)
+        case .week: return now.addingTimeInterval(-7 * 24 * 60 * 60)
+        case .month: return calendar.date(byAdding: .month, value: -1, to: now)!
+        }
+    }
+}
+
 struct HistoryDeletionResult {
     var removedIDs = Set<String>()
     var failures: [String] = []
