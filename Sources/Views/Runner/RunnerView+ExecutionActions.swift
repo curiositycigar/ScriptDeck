@@ -34,6 +34,7 @@ extension RunnerView {
             let resolved = store.resolved(item)
             outputExpanded = true
             try runner.run(item: resolved, arguments: arguments, workspaceID: workspaceInfo.id, workspaceName: workspaceInfo.name)
+            parameterHistory.remember(workspaceID: workspaceInfo.id, item: item, supplied: supplied)
         } catch { self.error = error.localizedDescription }
     }
 }

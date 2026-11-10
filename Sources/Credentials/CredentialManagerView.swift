@@ -33,36 +33,42 @@ struct CredentialManagerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Label(L("Credentials"), systemImage: "key").font(.title3.weight(.semibold))
+                SettingsPaneHeader(title: L("Credentials"),
+                                   subtitle: L("Passwords are stored in macOS Keychain. Script associations stay on this Mac."), symbol: "key", showsSymbol: canDismiss)
                 Spacer()
                 Button { editing = nil; showEditor = true } label: { Label(L("Add Credential…"), systemImage: "plus") }
                 if canDismiss { Button(L("Close")) { dismiss() }.keyboardShortcut(.cancelAction) }
             }
             if let scriptName {
-                Text(L("Script: ") + scriptName).font(.callout).textSelection(.enabled)
+                Text(L("Script: ") + scriptName).font(WorkspaceTypography.body).textSelection(.enabled)
             }
-            Text(L("Passwords are stored in macOS Keychain. Script associations stay on this Mac."))
-                .font(.caption).foregroundStyle(.secondary)
             HStack(alignment: .top, spacing: 18) {
                 List(selection: $selectedID) {
                     ForEach(sorted) { credential in
-                        HStack {
-                            Text(credential.name).lineLimit(1)
+                        HStack(spacing: 8) {
+                            WorkspaceSymbol("key").foregroundStyle(.secondary)
+                            Text(credential.name).font(WorkspaceTypography.bodyStrong).lineLimit(1).help(credential.name)
                             Spacer()
                             if let target, credential.scripts.contains(target) {
-                                Image(systemName: "link").foregroundStyle(.secondary)
+                                WorkspaceSymbol("link").foregroundStyle(.secondary)
                                     .accessibilityLabel(L("Associated with this script"))
                             }
-                        }.padding(.vertical, 6).tag(credential.id)
+                        }.padding(.vertical, 8).tag(credential.id)
+                            .workspaceListSelection(selectedID == credential.id)
                     }
                 }
-                .listStyle(.inset).frame(width: 220)
+                .listStyle(.inset)
+                .workspaceListAppearance().scrollContentBackground(.hidden)
+                .padding(.horizontal, 8)
+                .background(WorkspaceStyle.groupedSurface)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .frame(width: 220)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 14) {
                         if let selected {
-                            Text(selected.name).font(.headline).textSelection(.enabled)
+                            Text(selected.name).font(WorkspaceTypography.sectionTitle).textSelection(.enabled)
                             Label(L("Password saved in Keychain"), systemImage: "lock.shield")
-                                .font(.caption).foregroundStyle(.secondary)
+                                .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
                             if let target {
                                 Toggle(L("Associate with this script"), isOn: Binding(
                                     get: { selected.scripts.contains(target) },
@@ -74,10 +80,9 @@ struct CredentialManagerView: View {
                                 Button(L("Delete…"), role: .destructive) { deleting = selected }
                             }
                             if session != nil {
-                                Divider()
                                 Toggle(L("Press Return after filling"), isOn: $appendReturn)
                                 Text(L("Fill when the script is waiting for a password with input echo disabled."))
-                                    .font(.caption).foregroundStyle(.secondary)
+                                    .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
                                 Button {
                                     fill(selected.id)
                                 } label: {
@@ -88,20 +93,32 @@ struct CredentialManagerView: View {
                                 .disabled(!canFill)
                                 if !canFill {
                                     Text(L("Select this running terminal to fill its password."))
-                                        .font(.caption).foregroundStyle(.secondary)
+                                        .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
                                 }
                             }
-                        } else {
-                            Text(L("Select or add a credential."))
-                                .foregroundStyle(.secondary)
                         }
                         Spacer(minLength: 0)
                     }.frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(16)
+                }
+                .background(WorkspaceStyle.groupedSurface, in: RoundedRectangle(cornerRadius: 12))
+                .overlay {
+                    if selected == nil {
+                        VStack(spacing: 12) {
+                            WorkspaceSymbol("key", size: .emptyState)
+                            Text(L("Select or add a credential.")).font(WorkspaceTypography.body)
+                        }
+                        .foregroundStyle(.secondary).allowsHitTesting(false)
+                    }
                 }
             }
             if busy { ProgressView().controlSize(.small) }
         }
-        .padding(20).frame(width: 680, height: session == nil ? 440 : 520)
+        .padding(canDismiss ? 20 : 24)
+        .frame(width: canDismiss ? 680 : nil, height: canDismiss ? (session == nil ? 440 : 520) : nil)
+        .frame(maxWidth: canDismiss ? nil : .infinity, maxHeight: canDismiss ? nil : .infinity, alignment: .topLeading)
+        .background(WorkspaceStyle.canvas)
+        .workspaceTypography()
         .disabled(busy)
         .interactiveDismissDisabled(busy)
         .onAppear { selectedID = sorted.first?.id }
@@ -157,14 +174,14 @@ private struct CredentialEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text(credential == nil ? L("Add Credential…") : L("Edit Credential")).font(.headline)
+            Text(credential == nil ? L("Add Credential…") : L("Edit Credential")).font(WorkspaceTypography.dialogTitle)
             TextField(L("Credential Name"), text: $name)
             SecureField(credential == nil ? L("Password") : L("New password (leave blank to keep current)"), text: $password)
             if target != nil && credential == nil {
                 Text(L("This credential will be associated with the current script."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
             }
-            if let error { Text(error).font(.caption).foregroundStyle(.red).textSelection(.enabled) }
+            if let error { Text(error).font(WorkspaceTypography.caption).foregroundStyle(.red).textSelection(.enabled) }
             HStack {
                 if saving { ProgressView().controlSize(.small) }
                 Spacer()
@@ -188,6 +205,7 @@ private struct CredentialEditor: View {
         }
         .textFieldStyle(.roundedBorder)
         .padding(24).frame(width: 440)
+        .workspaceTypography()
         .disabled(saving).interactiveDismissDisabled(saving)
         .onAppear { name = credential?.name ?? "" }
         .onDisappear { password = "" }

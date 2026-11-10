@@ -3,8 +3,11 @@ import SwiftUI
 struct RunnerActions {
     var canImport: Bool
     var sidebarVisible: Bool
+    var canToggleSidebar: Bool
     var outputExpanded: Bool
     var importScripts: () -> Void
+    var newScript: () -> Void
+    var findScript: () -> Void
     var toggleSidebar: () -> Void
     var toggleOutput: () -> Void
 }
@@ -34,14 +37,20 @@ struct RunnerCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button(L("Add Workspace…")) { WorkspaceDialogs.add(to: workspaces) }
                 .keyboardShortcut("o", modifiers: .command)
+            Button(L("New Script")) { actions?.newScript() }
+                .keyboardShortcut("n", modifiers: .command)
+                .disabled(actions?.canImport != true)
             Button(L("Import Scripts…")) { actions?.importScripts() }
                 .keyboardShortcut("i", modifiers: .command)
                 .disabled(actions?.canImport != true)
         }
         CommandGroup(after: .sidebar) {
+            Button(L("Search scripts")) { actions?.findScript() }
+                .keyboardShortcut("f", modifiers: .command)
+                .disabled(actions == nil)
             Button(actions?.sidebarVisible == true ? L("Hide Sidebar") : L("Show Sidebar")) { actions?.toggleSidebar() }
                 .keyboardShortcut("s", modifiers: [.command, .control])
-                .disabled(actions == nil)
+                .disabled(actions?.canToggleSidebar != true)
             Button(actions?.outputExpanded == true ? L("Collapse Output") : L("Expand Output")) { actions?.toggleOutput() }
                 .keyboardShortcut("j", modifiers: .command)
                 .disabled(actions == nil)

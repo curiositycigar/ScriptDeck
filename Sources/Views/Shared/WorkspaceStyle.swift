@@ -2,94 +2,80 @@ import SwiftUI
 import AppKit
 
 enum WorkspaceStyle {
-    static let selectionColor = Color.accentColor.opacity(0.12)
+    // Shared semantic surfaces resolve against the current macOS appearance.
+    static let canvasNSColor = NSColor.textBackgroundColor
+    static let canvas = Color(nsColor: canvasNSColor)
+    static let sidebar = Color(nsColor: .controlBackgroundColor)
+    static let chrome = Color(nsColor: .windowBackgroundColor)
+    static let groupedSurface = Color.primary.opacity(0.025)
+    static let selectionColor = Color.accentColor.opacity(0.10)
 }
 
 struct WorkspaceIconButtonStyle: ButtonStyle {
+    var targetSize: CGFloat = WorkspaceControlMetrics.iconTarget
+    var prominent = false
+
     func makeBody(configuration: Configuration) -> some View {
-        IconButton(configuration: configuration)
+        IconButton(configuration: configuration, targetSize: targetSize, prominent: prominent)
     }
 
     private struct IconButton: View {
         let configuration: ButtonStyle.Configuration
+        let targetSize: CGFloat
+        let prominent: Bool
+        @Environment(\.accessibilityReduceMotion) private var reduceMotion
         @State private var hovered = false
         @Environment(\.isEnabled) private var isEnabled
 
+        @ViewBuilder private var label: some View {
+            if prominent {
+                configuration.label.foregroundStyle(Color(nsColor: .alternateSelectedControlTextColor))
+            } else {
+                configuration.label
+            }
+        }
+
+        private var background: Color {
+            if prominent {
+                return Color.accentColor.opacity(configuration.isPressed ? 0.76 : hovered ? 0.88 : 1)
+            }
+            return Color.primary.opacity(isEnabled ? (configuration.isPressed ? 0.12 : hovered ? 0.06 : 0) : 0)
+        }
+
         var body: some View {
-            configuration.label
-                .frame(width: 30, height: 30)
-                .background(Color.primary.opacity(isEnabled ? (configuration.isPressed ? 0.18 : hovered ? 0.09 : 0.04) : 0.02),
-                            in: RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary.opacity(0.10)))
+            label
+                .frame(width: targetSize, height: targetSize)
+                .background(background, in: RoundedRectangle(cornerRadius: 6))
                 .opacity(isEnabled ? 1 : 0.45)
-                .scaleEffect(configuration.isPressed ? 0.94 : 1)
+                .scaleEffect(configuration.isPressed && isEnabled && !reduceMotion ? 0.96 : 1)
                 .contentShape(Rectangle())
                 .onHover { hovered = $0 }
-                .animation(.easeOut(duration: 0.12), value: hovered)
-                .animation(.easeOut(duration: 0.08), value: configuration.isPressed)
+                .workspaceAnimation(value: hovered)
+                .workspaceAnimation(value: configuration.isPressed)
         }
     }
 }
 
-struct WorkspaceDisclosureStyle: DisclosureGroupStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Button {
-                configuration.isExpanded.toggle()
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: configuration.isExpanded ? "chevron.down" : "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 12)
-                    configuration.label
-                    Spacer(minLength: 0)
-                }
-                .padding(.horizontal, 6)
-                .frame(maxWidth: .infinity, minHeight: 34, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityValue(configuration.isExpanded ? L("Expanded") : L("Collapsed"))
-            if configuration.isExpanded {
-                configuration.content
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 20)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-// Materials belong to navigation and actions; readable content stays on solid system surfaces.
+// Navigation, actions, and readable content use solid semantic system surfaces.
 extension View {
     func workspaceListSelection(_ selected: Bool) -> some View {
-        self
-            .foregroundStyle(Color(nsColor: .labelColor))
-            .listRowBackground(
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(selected ? WorkspaceStyle.selectionColor : Color.clear)
-            )
+        modifier(WorkspaceListRowStyle(selected: selected))
     }
 
     func workspaceListAppearance() -> some View {
         self.background(NativeListSelectionSuppression())
     }
 
-    @ViewBuilder func workspaceGlass() -> some View {
-        if #available(macOS 26.0, *) {
-            self.glassEffect(.regular, in: .rect(cornerRadius: 16))
-        } else {
-            self.background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-        }
+    func workspacePrimaryAction() -> some View {
+        self.buttonStyle(.borderedProminent)
     }
 
-    @ViewBuilder func workspacePrimaryAction() -> some View {
-        if #available(macOS 26.0, *) {
-            self.buttonStyle(.glassProminent)
-        } else {
-            self.buttonStyle(.borderedProminent)
-        }
+    func workspaceCard() -> some View {
+        self.background(WorkspaceStyle.groupedSurface, in: RoundedRectangle(cornerRadius: 10))
+    }
+
+    func workspaceActionSurface() -> some View {
+        self.background(WorkspaceStyle.chrome)
     }
 }
 
@@ -154,13 +140,12 @@ struct WorkspaceEmptyState: View {
 
     var body: some View {
         VStack(spacing: 14) {
-            Image(systemName: symbol)
-                .font(.system(size: 38, weight: .light))
+            WorkspaceSymbol(symbol, size: .emptyState)
                 .foregroundStyle(.tint)
-                .frame(width: 80, height: 80)
+                .frame(width: WorkspaceControlMetrics.emptyTile, height: WorkspaceControlMetrics.emptyTile)
                 .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 22))
-            Text(title).font(.title2.weight(.semibold))
-            Text(message).font(.callout).foregroundStyle(.secondary)
+            Text(title).font(WorkspaceTypography.pageTitle)
+            Text(message).font(WorkspaceTypography.body).foregroundStyle(.secondary)
                 .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 340)
         }.padding(24)
@@ -173,8 +158,52 @@ struct WorkspaceSectionTitle: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text(title).font(.headline)
-            Text(subtitle).font(.callout).foregroundStyle(.secondary)
+            Text(title).font(WorkspaceTypography.sectionTitle)
+            Text(subtitle).font(WorkspaceTypography.body).foregroundStyle(.secondary)
         }
+    }
+}
+
+// macOS 26 supplies a shared glass capsule unless the toolbar group opts out.
+extension ToolbarContent {
+    @ToolbarContentBuilder func workspaceToolbarAppearance() -> some ToolbarContent {
+        if #available(macOS 26.0, *) {
+            self.sharedBackgroundVisibility(.hidden)
+        } else {
+            self
+        }
+    }
+}
+
+struct WorkspaceNavigationButtonStyle: ButtonStyle {
+    let selected: Bool
+    var cornerRadius: CGFloat = 9
+    @State private var hovered = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(Color.primary.opacity(configuration.isPressed ? 0.10 : selected || hovered ? 0.06 : 0),
+                        in: RoundedRectangle(cornerRadius: cornerRadius))
+            .onHover { hovered = $0 }
+            .workspaceAnimation(value: hovered)
+            .workspaceAnimation(value: selected)
+            .workspaceAnimation(value: configuration.isPressed)
+    }
+}
+
+private struct WorkspaceListRowStyle: ViewModifier {
+    let selected: Bool
+    @State private var hovered = false
+
+    func body(content: Content) -> some View {
+        content
+            .foregroundStyle(Color(nsColor: .labelColor))
+            .listRowBackground(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(selected ? WorkspaceStyle.selectionColor : Color.primary.opacity(hovered ? 0.04 : 0))
+                    .workspaceAnimation(value: selected)
+                    .workspaceAnimation(value: hovered)
+            )
+            .onHover { hovered = $0 }
     }
 }

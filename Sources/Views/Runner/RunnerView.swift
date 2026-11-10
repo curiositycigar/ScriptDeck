@@ -13,10 +13,14 @@ struct RunnerView: View {
     @ObservedObject var navigation: WorkspaceNavigation
     @State var schedulingItem: ScheduledTask?
     @Environment(\.openWindow) var openWindow
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
     @State var showScriptDetails = false
+    @State var showParameterHistory = false
+    @ObservedObject var parameterHistory = ParameterCallHistory.shared
     @State var scriptPathCopied = false
     @State var credentialScript: ScriptItem?
     @State var validatedScripts: Set<String> = []
+    @FocusState var searchFocused: Bool
     @FocusState var focusedParameter: String?
     @State var search = ""
     @State var editor: ScriptItem?
@@ -42,8 +46,8 @@ struct RunnerView: View {
         VStack(spacing: 0) {
             if let issue = store.configurationIssue {
                 HStack(alignment: .top) {
-                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                    Text(issue).font(.caption).textSelection(.enabled)
+                    WorkspaceSymbol("exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Text(issue).font(WorkspaceTypography.caption).textSelection(.enabled)
                     Spacer()
                     Button(L("Reload")) { store.reloadFromDisk(force: true) }
                 }.padding(12).background(Color.orange.opacity(0.08))
@@ -53,40 +57,33 @@ struct RunnerView: View {
                     .frame(width: geometry.size.width, height: geometry.size.height)
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
-        .frame(minWidth: preferences.sidebarVisible ? 820 : 680, minHeight: 280)
-        .navigationTitle(navigation.destination == .schedules ? L("Scheduled Tasks") : selected?.name ?? workspaceInfo.name)
-        .navigationSubtitle(workspaceInfo.name)
-        .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
-                Button { preferences.sidebarVisible.toggle() } label: { Image(systemName: "sidebar.left") }
-                    .help(preferences.sidebarVisible ? L("Hide Sidebar") : L("Show Sidebar"))
-                    .accessibilityLabel(preferences.sidebarVisible ? L("Hide Sidebar") : L("Show Sidebar"))
-                if !preferences.sidebarVisible { workspaceMenu.frame(maxWidth: 220) }
-            }
-            ToolbarItemGroup {
-                Button(action: importScripts) { Label(L("Import Scripts"), systemImage: "square.and.arrow.down") }
-                    .help(L("Import local scripts (⌘I)"))
-                    .disabled(store.directoryURL == nil || store.configurationIssue != nil)
-                Button { openEditor(ScriptItem()) } label: { Label(L("New Script"), systemImage: "plus") }
-                    .disabled(store.directoryURL == nil || store.configurationIssue != nil)
-            }
-            ToolbarItem(placement: .automatic) { libraryMenu }
-        }
+        .workspaceTypography()
+        .background(WorkspaceStyle.canvas)
+        .frame(minWidth: preferences.sidebarVisible ? 740 : 600, minHeight: 280)
+        .toolbar { workspaceToolbar }
+        .toolbarBackground(.visible, for: .windowToolbar)
         .focusedSceneValue(\.runnerActions, RunnerActions(
             canImport: store.directoryURL != nil && store.configurationIssue == nil,
-            sidebarVisible: preferences.sidebarVisible, outputExpanded: outputExpanded,
+            sidebarVisible: preferences.sidebarVisible, canToggleSidebar: navigation.destination == .scripts, outputExpanded: outputExpanded,
             importScripts: importScripts,
+            newScript: { openEditor(ScriptItem()) },
+            findScript: {
+                navigation.destination = .scripts
+                preferences.sidebarVisible = true
+                // The search field must be mounted before focus is requested.
+                DispatchQueue.main.async { searchFocused = true }
+            },
             toggleSidebar: { preferences.sidebarVisible.toggle() }, toggleOutput: { outputExpanded.toggle() }
         ))
         .onChange(of: session.selectedID) { _ in
             showScriptDetails = false
+            showParameterHistory = false
             focusedParameter = nil
             selectedSidebarFolder = nil
         }
         .onChange(of: navigation.destination) { destination in
             if destination == .schedules {
-                selectedSidebarFolder = nil
+                searchFocused = false
                 focusedParameter = nil
             }
         }
@@ -150,25 +147,32 @@ struct RunnerView: View {
     }
 
     var workspacePane: some View {
-        HSplitView {
-            if preferences.sidebarVisible {
-                sidebar
-                    .frame(minWidth: 220, idealWidth: 250, maxWidth: 330, maxHeight: .infinity)
-                    .background(.bar)
-            }
-            ZStack {
+        ZStack {
+            // Retain the split view and its native scroll views while another module is visible.
+            HSplitView {
+                if preferences.sidebarVisible {
+                    sidebar
+                        .frame(minWidth: 220, idealWidth: 240, maxWidth: 300, maxHeight: .infinity)
+                        .background(WorkspaceStyle.sidebar)
+                        .transition(.move(edge: .leading).combined(with: .opacity))
+                }
                 configurationPane
-                    .opacity(navigation.destination == .scripts ? 1 : 0)
-                    .disabled(navigation.destination != .scripts)
-                    .allowsHitTesting(navigation.destination == .scripts)
-                    .accessibilityHidden(navigation.destination != .scripts)
-                ScheduleDashboard(schedules: schedules, workspaces: workspaces, runner: runner,
-                                  showOutput: { outputExpanded = true })
-                    .opacity(navigation.destination == .schedules ? 1 : 0)
-                    .allowsHitTesting(navigation.destination == .schedules)
-                    .accessibilityHidden(navigation.destination != .schedules)
+                    .frame(minWidth: 490, maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(minWidth: 490, maxWidth: .infinity, maxHeight: .infinity)
+            .workspaceAnimation(value: preferences.sidebarVisible, motion: .layout)
+            .opacity(navigation.destination == .scripts ? 1 : 0)
+            .disabled(navigation.destination != .scripts)
+            .allowsHitTesting(navigation.destination == .scripts)
+            .accessibilityHidden(navigation.destination != .scripts)
+
+            ScheduleDashboard(schedules: schedules, workspaces: workspaces, runner: runner,
+                              showOutput: { outputExpanded = true })
+                .opacity(navigation.destination == .schedules ? 1 : 0)
+                .disabled(navigation.destination != .schedules)
+                .allowsHitTesting(navigation.destination == .schedules)
+                .accessibilityHidden(navigation.destination != .schedules)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .workspaceAnimation(value: navigation.destination, motion: .layout)
     }
 }

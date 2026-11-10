@@ -40,80 +40,145 @@ extension RunnerView {
                     VStack(alignment: .leading, spacing: 20) {
                         scriptHeader(item)
                         if !item.notes.isEmpty {
-                            Text(item.notes).font(.callout).foregroundStyle(.secondary)
+                            Text(item.notes).font(WorkspaceTypography.body).foregroundStyle(.secondary)
                                 .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
                         }
                         if item.parameters.isEmpty {
                             Label(L("This script has no parameters and is ready to run."), systemImage: "checkmark.circle")
-                                .font(.callout).foregroundStyle(.secondary)
+                                .font(WorkspaceTypography.body).foregroundStyle(.secondary)
                         } else {
-                            Text(L("Run Parameters")).font(.headline)
-                            parameterFields(item)
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack {
+                                    Text(L("Run Parameters")).font(WorkspaceTypography.sectionTitle)
+                                    Spacer()
+                                    Text("\(item.parameters.count)")
+                                        .font(WorkspaceTypography.caption.monospacedDigit()).foregroundStyle(.secondary)
+                                }
+                                parameterFields(item)
+                                    .padding(16)
+                                    .background(WorkspaceStyle.groupedSurface, in: RoundedRectangle(cornerRadius: 12))
+                            }
                         }
                     }
-                    .frame(maxWidth: 800, alignment: .leading)
-                    .frame(maxWidth: .infinity)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(20)
                 }
                 .onChange(of: focusedParameter) { id in
-                    if let id { withAnimation { proxy.scrollTo(id, anchor: .center) } }
+                    if let id { withAnimation(WorkspaceMotion.layout.animation(reduceMotion: reduceMotion)) { proxy.scrollTo(id, anchor: .center) } }
                 }
             }
             .id(item.id)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             executionBar(item)
-                .frame(maxWidth: 800)
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 20).padding(.vertical, 12)
-                .background(.bar)
+                .workspaceActionSurface()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func scriptHeader(_ item: ScriptItem) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "terminal")
-                .font(.system(size: 19, weight: .medium)).foregroundStyle(.tint)
-                .frame(width: 40, height: 40)
+        HStack(alignment: .center, spacing: 12) {
+            WorkspaceSymbol("terminal", size: .header).foregroundStyle(.tint)
+                .frame(width: WorkspaceControlMetrics.headerTile, height: WorkspaceControlMetrics.headerTile)
                 .background(Color.accentColor.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(item.name).font(.title2.weight(.semibold))
-                        .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .center, spacing: 2) {
+                    Text(item.name).font(WorkspaceTypography.scriptTitle)
+                        .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+                        .help(item.name)
                     Button { showScriptDetails.toggle() } label: {
-                        Image(systemName: "info.circle")
-                            .font(.system(size: 15))
-                            .frame(width: 32, height: 32)
+                        WorkspaceSymbol("info.circle", size: .toolbar)
+                            .frame(width: WorkspaceControlMetrics.titleActionTarget, height: WorkspaceControlMetrics.titleActionTarget)
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .buttonStyle(WorkspaceIconButtonStyle(targetSize: WorkspaceControlMetrics.titleActionTarget)).foregroundStyle(.secondary)
                     .help(L("Script Details")).accessibilityLabel(L("Script Details"))
                     .popover(isPresented: $showScriptDetails, arrowEdge: .bottom) {
                         scriptDetails(item)
                     }
                     Button { credentialScript = item } label: {
-                        Image(systemName: "key").font(.system(size: 15))
-                            .frame(width: 32, height: 32).contentShape(Rectangle())
+                        WorkspaceSymbol("key", size: .toolbar)
+                            .frame(width: WorkspaceControlMetrics.titleActionTarget, height: WorkspaceControlMetrics.titleActionTarget).contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain).foregroundStyle(.secondary)
+                    .buttonStyle(WorkspaceIconButtonStyle(targetSize: WorkspaceControlMetrics.titleActionTarget)).foregroundStyle(.secondary)
                     .help(L("Script Credentials")).accessibilityLabel(L("Script Credentials"))
                 }
-                Text((item.category.isEmpty || item.category == "未分组") ? L("Ungrouped") : item.category.replacingOccurrences(of: "/", with: "  ›  "))
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                    .help(item.category)
+                .frame(height: WorkspaceControlMetrics.titleActionTarget)
+                if !item.category.isEmpty && item.category != "未分组" {
+                    Text(item.category.replacingOccurrences(of: "/", with: "  /  "))
+                        .font(WorkspaceTypography.caption).foregroundStyle(.secondary).lineLimit(1)
+                        .frame(height: 14)
+                        .help(item.category)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            Button { openEditor(item) } label: { Label(L("Edit"), systemImage: "slider.horizontal.3") }
+            .frame(height: WorkspaceControlMetrics.headerTile)
+            Button { showParameterHistory.toggle() } label: {
+                WorkspaceSymbol("clock.arrow.circlepath", size: .toolbar)
+                    .frame(width: WorkspaceControlMetrics.titleActionTarget, height: WorkspaceControlMetrics.titleActionTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(WorkspaceIconButtonStyle(targetSize: WorkspaceControlMetrics.titleActionTarget)).foregroundStyle(.secondary)
+            .help(L("Recent Parameters")).accessibilityLabel(L("Recent Parameters"))
+            .disabled(item.parameters.isEmpty)
+            .popover(isPresented: $showParameterHistory, arrowEdge: .bottom) {
+                parameterHistoryPicker(item)
+            }
+            Button { openEditor(item) } label: {
+                WorkspaceSymbol("slider.horizontal.3", size: .toolbar)
+                    .frame(width: WorkspaceControlMetrics.titleActionTarget, height: WorkspaceControlMetrics.titleActionTarget)
+                    .contentShape(Rectangle())
+            }
+                .buttonStyle(WorkspaceIconButtonStyle(targetSize: WorkspaceControlMetrics.titleActionTarget)).foregroundStyle(.secondary)
+                .help(L("Edit")).accessibilityLabel(L("Edit"))
                 .disabled(isActive(item))
         }
+    }
+
+    private func parameterHistoryPicker(_ item: ScriptItem) -> some View {
+        let entries = parameterHistory.entries(workspaceID: workspaceInfo.id, item: item)
+        let currentValues = ParameterCallHistory.values(for: item, supplied: suppliedValues(for: item))
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text(L("Recent Parameters")).font(WorkspaceTypography.sectionTitle)
+                Spacer()
+                if !entries.isEmpty {
+                    Button(L("Clear")) { parameterHistory.clear(workspaceID: workspaceInfo.id, scriptID: item.id) }
+                        .buttonStyle(.plain).foregroundStyle(.secondary)
+                }
+            }
+            if entries.isEmpty {
+                Text(L("Run this script to remember up to five recent parameter sets."))
+                    .font(WorkspaceTypography.body).foregroundStyle(.secondary)
+                    .padding(.vertical, 20).frame(maxWidth: .infinity)
+            } else {
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(entries) { entry in
+                            ParameterHistoryRow(entry: entry, parameters: item.parameters, selected: entry.values == currentValues) {
+                                session.values[item.id] = entry.values
+                                validatedScripts.remove(item.id)
+                                showParameterHistory = false
+                            } remove: {
+                                parameterHistory.remove(id: entry.id, workspaceID: workspaceInfo.id, scriptID: item.id)
+                            }
+                        }
+                    }
+                }.frame(maxHeight: 300)
+                Text(L("Selecting a record fills the form without running the script."))
+                    .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
+            }
+        }
+        .padding(16).frame(width: 380).workspaceTypography()
     }
 
     private func scriptDetails(_ item: ScriptItem) -> some View {
         let resolved = store.resolved(item)
         return VStack(alignment: .leading, spacing: 16) {
             Label(L("Script Details"), systemImage: "info.circle")
-                .font(.headline)
-            Text(item.name).font(.callout).foregroundStyle(.secondary)
+                .font(WorkspaceTypography.sectionTitle)
+            Text(item.name).font(WorkspaceTypography.body).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 12) {
@@ -123,7 +188,7 @@ extension RunnerView {
                             NSPasteboard.general.clearContents()
                             scriptPathCopied = NSPasteboard.general.setString(resolved.path, forType: .string)
                         } label: {
-                            Image(systemName: scriptPathCopied ? "checkmark" : "doc.on.doc")
+                            WorkspaceSymbol(scriptPathCopied ? "checkmark" : "doc.on.doc")
                                 .foregroundStyle(scriptPathCopied ? Color.green : Color.secondary)
                         }
                             .help(scriptPathCopied ? L("Copied") : L("Copy Path"))
@@ -131,13 +196,12 @@ extension RunnerView {
                             .accessibilityValue(scriptPathCopied ? L("Copied") : "")
                         Button {
                             NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: resolved.path)])
-                        } label: { Image(systemName: "folder") }
+                        } label: { WorkspaceSymbol("folder") }
                             .help(L("Show in Finder")).accessibilityLabel(L("Show in Finder"))
                     }
                     .buttonStyle(WorkspaceIconButtonStyle())
                     .foregroundStyle(.secondary)
                 }
-                Divider()
                 scriptDetailRow(L("Interpreter"), value: item.interpreter == "direct" ? L("Run directly") : item.interpreter)
                 scriptDetailRow(L("Working Directory"), value: resolved.workingDirectory.isEmpty ? L("Script's folder") : resolved.workingDirectory)
             }
@@ -156,9 +220,9 @@ extension RunnerView {
 
     private func scriptDetailRow(_ title: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
+            Text(title).font(WorkspaceTypography.caption).foregroundStyle(.secondary)
                 .frame(width: 110, alignment: .leading)
-            Text(value).font(.caption.monospaced())
+            Text(value).font(WorkspaceTypography.code)
                 .textSelection(.enabled)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -167,62 +231,92 @@ extension RunnerView {
 
     func parameterFields(_ item: ScriptItem) -> some View {
         let issues = validatedScripts.contains(item.id) ? parameterIssues(for: item, values: suppliedValues(for: item)) : [:]
-        return VStack(alignment: .leading, spacing: 14) {
+        let labelFont = WorkspaceTypography.parameterLabelNSFont
+        let labelWidth = min(200, ceil(item.parameters.map { parameter in
+            let nameWidth = (parameter.name as NSString).size(withAttributes: [.font: labelFont]).width
+            let requiredWidth = parameter.required ? ("*" as NSString).size(withAttributes: [.font: WorkspaceTypography.bodyNSFont]).width + 4 : 0
+            return nameWidth + requiredWidth + 8
+        }.max() ?? 0))
+        return VStack(alignment: .leading, spacing: 16) {
             ForEach(item.parameters) { parameter in
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 12) {
-                        HStack(spacing: 4) {
-                            Text(parameter.name).font(.callout.weight(.medium))
-                                .lineLimit(1).truncationMode(.tail)
-                            if parameter.required {
-                                Text("*").foregroundStyle(.red)
-                                    .help(L("Required"))
-                                    .accessibilityLabel(L("Required"))
-                            }
-                        }
-                        .frame(width: 140, alignment: .leading)
-                        .help(parameter.argumentName.isEmpty ? parameter.name : "\(parameter.name) (\(parameter.argumentName))")
-                        if parameter.passing == .flag {
-                            Toggle(parameter.name, isOn: Binding(
-                                get: { binding(for: parameter, scriptID: item.id).wrappedValue == "true" },
-                                set: { binding(for: parameter, scriptID: item.id).wrappedValue = $0 ? "true" : "false" }
-                            )).toggleStyle(.switch).labelsHidden().accessibilityLabel(parameter.name)
-                                .focused($focusedParameter, equals: parameter.id)
-                            Spacer(minLength: 0)
-                        } else {
-                            if parameter.kind == .select {
-                                Picker("", selection: binding(for: parameter, scriptID: item.id)) {
-                                    Text(parameter.placeholder.isEmpty ? L("Choose…") : parameter.placeholder).tag("")
-                                    ForEach(parameter.options) { option in Text(option.label).tag(option.value) }
-                                }.labelsHidden().frame(maxWidth: .infinity, alignment: .leading)
-                                .focused($focusedParameter, equals: parameter.id)
-                                .accessibilityLabel(parameter.name)
-                            } else {
-                                TextField(parameter.placeholder.isEmpty ? (parameter.kind == .text ? L("Enter a parameter value") : L("Choose a path or drag a file")) : parameter.placeholder, text: binding(for: parameter, scriptID: item.id))
-                                .textFieldStyle(.roundedBorder)
-                                .focused($focusedParameter, equals: parameter.id)
-                                .accessibilityLabel(parameter.name)
-                                .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
-                                    guard parameter.kind != .text, let provider = providers.first else { return false }
-                                    _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                                        guard let url else { return }
-                                        DispatchQueue.main.async { session.values[item.id, default: [:]][parameter.id] = url.path }
-                                    }
-                                    return true
-                                }
-                            }
-                            if parameter.kind == .file || parameter.kind == .folder {
-                                Button(L("Choose…")) { choosePath(directory: parameter.kind == .folder) { session.values[item.id, default: [:]][parameter.id] = $0 } }
-                            }
+                ParameterRowLayout(labelWidth: labelWidth) {
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(parameter.name).font(WorkspaceTypography.bodyStrong)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if parameter.required {
+                            Text("*").font(WorkspaceTypography.body).foregroundStyle(.red)
+                                .help(L("Required")).accessibilityLabel(L("Required"))
                         }
                     }
+                    .help(parameter.argumentName.isEmpty ? parameter.name : "\(parameter.name) (\(parameter.argumentName))")
+                    parameterControl(parameter, item: item)
                     if let issue = issues[parameter.id] {
                         Label(issue, systemImage: "exclamationmark.circle")
-                            .font(.caption).foregroundStyle(.red)
+                            .font(WorkspaceTypography.caption).foregroundStyle(.red)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                }.id(parameter.id)
+                }
+                .id(parameter.id)
             }
-        }.controlSize(.regular)
+        }
+        .controlSize(.regular)
+        .workspaceAnimation(value: validatedScripts.contains(item.id), motion: .layout)
+    }
+
+    @ViewBuilder private func parameterControl(_ parameter: ScriptParameter, item: ScriptItem) -> some View {
+        if parameter.passing == .flag {
+            HStack {
+                Toggle(parameter.name, isOn: Binding(
+                    get: { binding(for: parameter, scriptID: item.id).wrappedValue == "true" },
+                    set: { binding(for: parameter, scriptID: item.id).wrappedValue = $0 ? "true" : "false" }
+                ))
+                .toggleStyle(.switch).controlSize(.small).labelsHidden()
+                .accessibilityLabel(parameter.name)
+                .focused($focusedParameter, equals: parameter.id)
+                Spacer(minLength: 0)
+            }
+        } else {
+            HStack(spacing: 6) {
+                if parameter.kind == .select {
+                    Picker("", selection: binding(for: parameter, scriptID: item.id)) {
+                        Text(parameter.placeholder.isEmpty ? L("Choose…") : parameter.placeholder).tag("")
+                        ForEach(parameter.options) { option in Text(option.label).tag(option.value) }
+                    }
+                    .labelsHidden().frame(maxWidth: .infinity, alignment: .leading)
+                    .focused($focusedParameter, equals: parameter.id)
+                    .accessibilityLabel(parameter.name)
+                } else {
+                    TextField(parameter.placeholder.isEmpty ? (parameter.kind == .text ? L("Enter a parameter value") : L("Choose a path or drag a file")) : parameter.placeholder, text: binding(for: parameter, scriptID: item.id))
+                        .textFieldStyle(.roundedBorder)
+                        .focused($focusedParameter, equals: parameter.id)
+                        .accessibilityLabel(parameter.name)
+                        .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
+                            guard parameter.kind != .text, let provider = providers.first else { return false }
+                            _ = provider.loadObject(ofClass: URL.self) { url, _ in
+                                guard let url else { return }
+                                DispatchQueue.main.async { session.values[item.id, default: [:]][parameter.id] = url.path }
+                            }
+                            return true
+                        }
+                }
+                if parameter.kind == .file || parameter.kind == .folder {
+                    Button {
+                        choosePath(directory: parameter.kind == .folder) { session.values[item.id, default: [:]][parameter.id] = $0 }
+                    } label: { WorkspaceSymbol("folder", size: .toolbar) }
+                    .buttonStyle(WorkspaceIconButtonStyle()).foregroundStyle(.secondary)
+                    .help(L("Choose…")).accessibilityLabel(L("Choose…"))
+                    let value = binding(for: parameter, scriptID: item.id).wrappedValue
+                    let path = store.resolvedParameterPath(value)
+                    Button {
+                        guard !value.isEmpty, FileManager.default.fileExists(atPath: path) else { return }
+                        NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+                    } label: { WorkspaceSymbol("arrow.up.forward.square", size: .toolbar) }
+                    .buttonStyle(WorkspaceIconButtonStyle()).foregroundStyle(.secondary)
+                    .help(L("Show in Finder")).accessibilityLabel(L("Show in Finder"))
+                    .disabled(value.isEmpty || !FileManager.default.fileExists(atPath: path))
+                }
+            }
+        }
     }
 
     func executionBar(_ item: ScriptItem) -> some View {
@@ -241,14 +335,14 @@ extension RunnerView {
 
     private func executionStatus(_ item: ScriptItem) -> some View {
         Label(isActive(item) ? L("This script is running") : L("Ready"), systemImage: isActive(item) ? "waveform" : "checkmark.circle")
-            .font(.callout.weight(.medium))
+            .font(WorkspaceTypography.bodyStrong)
             .foregroundStyle(isActive(item) ? Color.accentColor : Color.secondary)
             .fixedSize(horizontal: true, vertical: false)
             .help(isActive(item) ? L("Switch terminals in the task list below, or run again") : L("⌘ Return to run script"))
     }
 
     private func executionActions(_ item: ScriptItem) -> some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .center, spacing: 8) {
             Button {
                 do {
                     let supplied = suppliedValues(for: item)
@@ -256,15 +350,18 @@ extension RunnerView {
                     schedulingItem = ScheduledTask(name: item.name, workspaceID: workspaceInfo.id,
                                                    workspaceName: workspaceInfo.name, item: store.resolved(item), values: supplied)
                 } catch { self.error = error.localizedDescription }
-            } label: { Label(L("Schedule…"), systemImage: "clock.badge.plus") }
+            } label: { WorkspaceSymbol("clock.badge.plus", size: .toolbar) }
+            .buttonStyle(WorkspaceIconButtonStyle())
+            .foregroundStyle(.secondary)
+            .help(L("Schedule…"))
+            .accessibilityLabel(L("Schedule…"))
+
             Button {
                 execute(item)
-            } label: {
-                Label(L("Run"), systemImage: "play.fill").frame(minWidth: 68)
-            }
-            .workspacePrimaryAction()
-            .controlSize(.regular)
+            } label: { WorkspaceSymbol("play.fill", size: .toolbar) }
+            .buttonStyle(WorkspaceIconButtonStyle(prominent: true))
             .help(L("⌘ Return to run script"))
+            .accessibilityLabel(L("Run"))
             .keyboardShortcut(.return, modifiers: .command)
         }
     }

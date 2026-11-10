@@ -114,7 +114,14 @@ private final class TestScheduleService: ScheduleService {
     let duplicateState = try ScheduleFiles.read(ScheduleRuntime.self, ScheduleFiles.runtime(directory, slowTask.id))
     check(duplicateState.runID == slowState?.runID && slowProcess.isRunning, "同一定时任务的并发触发不会启动第二个实例")
     let backgroundRunner = ProcessRunner()
+    var newerCompletedState = state
+    newerCompletedState.startedAt = slowState!.startedAt!.addingTimeInterval(1)
+    backgroundRunner.synchronizeScheduled(task: task, state: newerCompletedState, root: directory, running: false)
     backgroundRunner.synchronizeScheduled(task: slowTask, state: slowState!, root: directory, running: true)
+    let expectedOrder = [newerCompletedState.runID, slowState?.runID]
+    check(RunOutputRecord.merge(sessions: backgroundRunner.sessions, history: [], hiding: []).map(\.id) == expectedOrder.compactMap { $0 },
+          "Run Output places newer completed runs above older active runs")
+    backgroundRunner.select(backgroundRunner.sessions.last!.id)
     check(backgroundRunner.isRunning && backgroundRunner.foregroundRunningSessions.isEmpty && backgroundRunner.activeRecordIDs.contains(slowState!.runID!),
           "后台任务进入执行列表和历史保护，但不阻止 App 单独退出")
     check(backgroundRunner.output.contains("background-ready"), "执行列表读取后台日志并显示输出")
@@ -122,6 +129,8 @@ private final class TestScheduleService: ScheduleService {
     wait(slowProcess)
     slowState = try ScheduleFiles.read(ScheduleRuntime.self, ScheduleFiles.runtime(directory, slowTask.id))
     backgroundRunner.synchronizeScheduled(task: slowTask, state: slowState!, root: directory, running: false)
+    check(RunOutputRecord.merge(sessions: backgroundRunner.sessions, history: [], hiding: []).map(\.id) == expectedOrder.compactMap { $0 },
+          "Finishing a run keeps its position in the start-time order")
     check(slowState?.outcome == .stopped && !backgroundRunner.isRunning, "执行列表的停止请求交给后台执行器终止进程组")
     let stoppedLog = try String(contentsOfFile: slowState!.logPath!, encoding: .utf8)
     check(!stoppedLog.contains("unexpected"), "后台停止不会继续执行后续步骤")

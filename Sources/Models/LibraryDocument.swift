@@ -41,8 +41,10 @@ struct LibraryDocument: Codable {
             guard !script.interpreter.isEmpty else { throw RunnerError(message: L("Script {0} must have an interpreter.", "\(script.id)")) }
             var argumentNames = Set<String>()
             var parameterIDs = Set<String>()
-            for parameter in script.parameters {
-                let context = L("Script {0}, parameter {1}", "\(script.name)", "\(parameter.id)")
+            for (index, parameter) in script.parameters.enumerated() {
+                let name = parameter.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                let displayName = name.isEmpty ? L("Parameter {0}", "\(index + 1)") : name
+                let context = L("Script {0}, parameter {1}", "\(script.name)", displayName)
                 guard !parameter.id.isEmpty, parameterIDs.insert(parameter.id).inserted, !parameter.name.isEmpty else {
                     throw RunnerError(message: L("{0}: parameter id is empty or duplicated, or label is empty.", "\(context)"))
                 }

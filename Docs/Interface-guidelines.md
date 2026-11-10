@@ -1,0 +1,86 @@
+# Interface Guidelines
+
+ScriptDeck uses a compact macOS interface with restrained hierarchy, predictable controls, and keyboard access. English and Simplified Chinese share the same type scale and layout rules. Prefer the system font, SF Symbols, semantic colors, and native control behavior.
+
+## Typography
+
+Use `WorkspaceTypography` from `Sources/Views/Shared/WorkspaceTypography.swift`. Do not introduce local point sizes or mix SwiftUI text-style defaults with the app's explicit scale.
+
+| Token | Size / weight | Use |
+| --- | --- | --- |
+| `pageTitle` | 20 pt / semibold | Dashboard titles, primary empty-state titles |
+| `scriptTitle` | 17 pt / semibold | Script panel title; center the icon tile against the complete title/subtitle group |
+| `dialogTitle` | 17 pt / semibold | Editor, history, credential, and other sheet titles |
+| `sectionTitle` | 13 pt / semibold | Section headings, emphasized record names |
+| `body` | 13 pt / regular | Body text, inputs, buttons, list names |
+| `bodyStrong` | 13 pt / medium | Parameter labels, emphasized list names |
+| `caption` | 12 pt / regular | Paths, descriptions, timestamps, help, status, validation |
+| `captionStrong` | 12 pt / medium | Compact status labels |
+| `sectionLabel` | 12 pt / semibold | Sidebar section names, workspace initials |
+| `code` | 12 pt / monospaced | Saved logs and technical paths |
+| `badge` | 11 pt / semibold | Single-character workspace badges only |
+
+Use `monospacedDigit()` on durations, counts, and pagination where stable digit widths help. Do not use smaller text to make a layout fit. Use wrapping, truncation with a full-value tooltip, scrolling, or the existing alternate layout instead. Keep native line heights and allow explanatory and validation text to wrap.
+
+Every standalone screen applies `workspaceTypography()` to establish a 13 pt baseline and regular native controls. Native menus, title bars, tab bars, alerts, and system dialogs retain macOS-managed typography and sizing. Loading spinners may use the native small control size. The empty-state call to action may use a large native control.
+
+Terminal text remains user-configurable from 10–24 pt. The terminal settings preview uses the same chosen size; saved log text uses `code`. Parameter label measurement uses `parameterLabelNSFont`, matching the rendered `bodyStrong` font, rather than a separately chosen AppKit text style.
+
+## Icons and hit areas
+
+Use `WorkspaceSymbol` for standalone SF Symbols. Default text-and-icon labels use the shared label style. Symbol size describes the glyph; the alignment slot and clickable area are separate.
+
+| Icon role | Glyph / alignment slot | Use |
+| --- | --- | --- |
+| `disclosure` | 10 / 12 pt | Custom disclosure chevrons |
+| `inline` | 13 / 16 pt | List items, field actions, statuses, text-and-icon labels |
+| `toolbar` | 14 / 16 pt | Output and workspace toolbar actions, script information and credentials |
+| `navigation` | 16 / 20 pt | Workspace rail and prominent status indicators |
+| `header` | 20 / 24 pt | Page and sheet header symbols |
+| `emptyState` | 32 / 40 pt | Empty-state illustrations |
+
+Use medium symbol weight; empty-state symbols use light weight. Do not enlarge an icon by applying a text font to its parent. Select its role explicitly. Preserve accessible action names and tooltips on icon-only buttons.
+
+`WorkspaceControlMetrics` defines 24 pt contextual title-action targets, 28 pt compact custom targets, 30 pt standard icon targets, and 36 pt rail targets. Header tiles are 40 pt and empty-state tiles are 72 pt. Native buttons, pickers, menus, and disclosure controls keep platform sizing rather than being forced into custom hit-area frames. Small custom icon controls must retain their target size even when the glyph is small. In the script header, center the information and credential icons alongside the title in 24 pt targets with 2 pt spacing. The trailing Edit action is also icon-only, using the same 14 pt glyph, 24 pt target, plain button style, and secondary foreground; preserve localized tooltips and accessible labels. Use a 24 pt title row, a 2 pt gap, and a 14 pt subtitle row so the text group matches the 40 pt icon tile. Keep long titles on one line with middle truncation and a full-title tooltip; center the title row when no subtitle exists.
+
+## Grouping and boundaries
+
+Prefer spacing, typography, and subtle surface changes to separator lines. `workspaceCard()` groups parameters and schedule records with a very light semantic fill and no outline. Action bars use the shared chrome surface without a top border. Icon buttons use hover and pressed fills without permanent outlines.
+
+Order the sidebar as search, a workspace selector with New Folder and New Script actions, then the script tree. Omit a redundant Scripts heading. Use selectable native rows with 18 pt hierarchy indentation and no disclosure chevrons. Distinguish expanded folders with an open-folder icon, collapsed folders with a filled folder, and empty folders with a secondary outline. Show each folder’s total script count, including descendants, at the trailing edge using the 12 pt caption token, monospaced digits, and tertiary foreground. Empty folders show 0; searching does not change the total. Search reveals matching descendants without changing remembered expansion states.
+
+Inset the script list container by 8 pt horizontally and 4 pt vertically. Apply this outside the native list so selected-row backgrounds stay clear of the sidebar edges while folder indentation and native scrolling remain intact.
+
+Workspace rail items share one selection treatment: accent-colored text or symbols and the same subtle neutral background used for hover, without a side stripe or a separate selected surface. Pressing increases the background emphasis without dimming the label.
+
+Do not stack a card border, toolbar separator, and background change to express the same boundary. Keep native input affordances, selected-row fills, draggable split-view dividers, and menu separators that group distinct operations. Preserve the workspace rail's right boundary and internal workspace/global separator. Preserve the Run Output panel's upper boundary (the native split divider when expanded) and the divider below its expanded title bar. Avoid additional decorative footer and log-view borders.
+
+Scheduled Tasks fills the entire area to the right of the workspace rail. Its header, task cards, and bottom action bar use the available width with 20 pt horizontal insets rather than an 800 pt cap. Keep the header and bottom action bar outside the scrolling task area. Center the empty-state prompt horizontally and vertically in the remaining viewport, allowing scrolling when its intrinsic height exceeds a short viewport. Hide the script split view and its toolbar controls while keeping it mounted, so switching back preserves search, folder expansion and selection, scroll positions, parameters, and sidebar visibility. The Search Scripts command returns to Scripts before focusing the search field; disable the sidebar-toggle command in Scheduled Tasks.
+
+Keep the compact native title-bar toolbar limited to sidebar visibility and, when the sidebar is hidden, workspace actions. Do not duplicate Import or New Script in this toolbar; retain their existing menu, shortcut, and sidebar entry points. Let AppKit draw the opaque titlebar background, enable native window/background dragging, and hide shared glass backgrounds on macOS 26 toolbar groups. Avoid a SwiftUI color layer over the toolbar background so its empty space retains native drag behavior. Keep the window title as ScriptDeck; show the script name once in its content header and the workspace name in the sidebar selector. Use 14 pt action icons in 30 pt targets, with tooltips and accessible labels instead of repeated header text. Leave outer toolbar spacing to macOS, without extra horizontal padding inside groups. Workspace selectors are borderless, without capsule backgrounds.
+
+The terminal and content canvas share `WorkspaceStyle.canvasNSColor`. All surfaces and text resolve against the current macOS appearance; do not hard-code white or black backgrounds.
+
+Scheduling Notes opens from a plain information icon immediately after the Scheduled Tasks title, using the same 14 pt symbol and 24 pt target as script-title actions. Present the existing localized notes in a popover instead of a disclosure section below the task list. Keep total, enabled, and paused schedule counts together in the bottom action bar, including zero counts; do not repeat them below the title. Use caption typography and move the create action to a second row when needed.
+
+Script headers, parameter forms, and execution footers fill the available panel width without an 800 pt cap. Script parameter forms use a light semantic group with a 12 pt radius and 16 pt insets. Keep measured label columns up to 200 pt wide when at least 240 pt remains for the controls; otherwise stack labels above inputs with an 8 pt gap. `ParameterRowLayout` reflows the same native controls instead of duplicating them, preserving input identity and focus. Long labels wrap, required markers remain visible, and validation guidance aligns below the control with a 6 pt gap. Retain native rounded text fields, menu pickers, and compact switches. File selection and Finder reveal use 14 pt icons in 30 pt hover targets with localized labels. Use centered 14 pt symbols in 30 pt square targets with a 6 pt corner radius for Run and Schedule. Keep Run prominent with an accent fill and Schedule secondary. Preserve localized tooltips and accessible names, and align the form and footer to 20 pt outer insets.
+
+The schedule grid adapts its column count to the available width and uses the tallest card at that width as the shared height. Keep task details at the top and push the action area to the bottom with flexible space. Scheduled task cards use a light semantic surface with a 12 pt radius and 16 pt insets, without borders, shadows, or glass. A 36 pt schedule icon anchors the task name and workspace/script context. Give the name up to two lines. Stack the schedule summary, next run, and last run across the card width using 13 pt emphasis for the summary and 12 pt secondary execution metadata. Place the status symbol, text, and native mini enable/pause switch on the left of the bottom row. Place History, Edit, and More Actions on the right, with destructive deletion in More Actions. Keep output/stop controls visible only for running tasks; retain existing operation guards and confirmation. These choices follow Apple's [layout and grouping guidance](https://developer.apple.com/videos/play/wwdc2025/356/) while preserving the app's restrained content surfaces.
+
+Settings uses a 184 pt semantic sidebar with 12 pt insets and 40 pt navigation rows. Selected rows reuse the main window navigation button style: accent-colored labels and symbols, a subtle neutral selection/hover fill, a stronger pressed fill, and a 10 pt radius. Each row has the same 12 pt horizontal content padding. The 940 × 600 pt settings window has a thin sidebar boundary and a plain content canvas. Every pane uses 24 pt content insets, a text-only 17 pt title, and an optional 12 pt secondary explanation. Standalone credential sheets retain the shared symbol tile. General and Terminal use shared sections whose headings, cards, and help align to the pane edges; native pickers and steppers sit inside 16 pt card insets without additional grouped-form margins. Workspace and credential lists use the shared selection treatment, 12 pt rounded semantic groups, and readable secondary paths or metadata. Inset each native list by 8 pt horizontally before drawing its container background so selected rows do not touch the edges; retain the native vertical list insets and include this padding within the credential list’s 220 pt total width. Use compact icon targets for list ordering and a labeled More Actions menu for less frequent workspace operations. Credential management fills the settings pane while its standalone sheets retain their existing dimensions. Keep Keychain, schedule protections, deletion confirmations, and preferences unchanged.
+
+## Maintenance
+
+Apply changes through the shared tokens before adjusting individual screens. Check compilation, localization coverage, and existing navigation/layout regressions. Visual review should include both languages, narrow windows, long names, validation messages, and the expanded output panel. Do not run personal scripts or install schedules for visual checks.
+
+The Recent Parameters icon sits immediately before Edit and uses the same 24 pt title action target and secondary icon style. Its popover lists the five most recent distinct parameter calls for the current workspace and script, newest first. Each row uses only a subtle selection fill when its normalized values match the current form, updating as the form changes. List parameter names and values on separate aligned rows; truncate long values after a short four-character prefix so most available space shows the tail, and expose their full contents in a tooltip. Selecting a row replaces all form values without executing. A separate trailing trash button removes only that record without changing the form or closing the picker; Clear removes only that script’s local records. Save snapshots after an accepted manual launch, normalize defaults and boolean flags for deduplication, and persist locally in app preferences rather than the library or execution metadata. Ignore snapshots whose parameter IDs no longer match the script.
+
+Execution History uses a native confirmation alert for single-record deletion with a “Do not ask again” checkbox. Persist suppression only when Delete is confirmed, and apply it only to individual records; bulk and age-based clearing retain confirmation. Cancellation does not save the checkbox choice. Running and pending-write protection is revalidated during deletion.
+
+Execution History shares the 40 pt header tile, 17 pt title, and 12 pt subtitle used by other sheets. Use 14 pt toolbar icons in 30 pt hover targets for refresh, deletion, Finder reveal, and pagination, with localized tooltips and accessible names. Keep Close as a native button and preserve the native clear menu. Inset the record list by 8 pt horizontally and 4 pt vertically; use semantic sidebar and canvas surfaces, the shared selection fill, and the native split divider. Log details use 20 pt outer insets, a subtle metadata group, and a borderless monospaced log surface. Reflow metadata vertically when needed. Task-scoped history uses the task name in the header, omits filters and search, and labels records with execution time down to seconds plus status and duration. Global history retains workspace/script filters and search. Preserve existing deletion scopes, confirmation preferences, live refresh, and paging behavior.
+
+## Motion
+
+Use `WorkspaceMotion` through `workspaceAnimation(value:motion:)` for explicit interaction state. Feedback fades last 140 ms; expansion and navigation transitions use 220 ms ease-in-out without bounce. Animate navigation and task selection, hover/press fills, folder disclosures, sidebar/task-list visibility, module switching, validation layout, and output disclosure indicators. Keep hover targets fixed, preserve native keyboard and split-divider behavior, and retain terminal rendering without animation. Never animate terminal output, elapsed-time ticks, or every parameter keystroke. All custom animation and focus scrolling respect the system Reduce Motion preference. Native sheets, popovers, alerts, menus, and standard controls retain platform transitions.
+
+Keep Run Output in a persistent native vertical split view, including its 46 pt collapsed header. Expanding or collapsing output must not reparent or fade the workspace, recreate its sidebar, or lose search, folder expansion, form focus/values, or scroll position. Scope disclosure animation to its chevron and inner content. The Run Output title uses a plain button with no hover, pressed, or selected background. Show execution records in a single list sorted by start time, newest first. Each row shows a status symbol, the script name, and trailing elapsed time on one line. Keep the full status and start time in the tooltip.

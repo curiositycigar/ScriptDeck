@@ -15,7 +15,7 @@ final class RunLogWriter: @unchecked Sendable {
     private var reportedError = false
     private let onError: @Sendable (String) -> Void
 
-    init(id: String = UUID().uuidString, item: ScriptItem, workspaceID: String?, workspaceName: String, startedAt: Date,
+    init(id: String = UUID().uuidString, item: ScriptItem, workspaceID: String?, workspaceName: String, startedAt: Date, scheduledTaskID: String? = nil,
          onError: @escaping @Sendable (String) -> Void) throws {
         self.id = id
         directory = Self.directory(for: URL(fileURLWithPath: item.path))
@@ -28,7 +28,7 @@ final class RunLogWriter: @unchecked Sendable {
         metadataURL = directory.appendingPathComponent(stem + ".json")
         record = ExecutionRecord(id: id, scriptID: item.id, scriptName: item.name,
                                  scriptFile: item.path, workspaceID: workspaceID,
-                                 workspaceName: workspaceName, startedAt: startedAt,
+                                 workspaceName: workspaceName, scheduledTaskID: scheduledTaskID, startedAt: startedAt,
                                  logFilename: logURL.lastPathComponent)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true,
                                                attributes: [.posixPermissions: 0o700])

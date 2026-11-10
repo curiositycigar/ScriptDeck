@@ -9,6 +9,7 @@ final class ProcessRunner: ObservableObject {
     @Published private(set) var selectedSessionID: UUID?
     @Published private(set) var launchRevision = 0
     @Published private(set) var historyRevision = 0
+    @Published private(set) var hiddenOutputRecordIDs = Set<String>()
     private let preferences: AppPreferences
     private let idleSession: ExecutionSession
     private var subscriptions: [UUID: Set<AnyCancellable>] = [:]
@@ -26,6 +27,8 @@ final class ProcessRunner: ObservableObject {
             session.updateScheduled(task: task, state: state, root: root, running: running)
             if changed { historyRevision += 1 }
         } else if !importedScheduledRuns.contains(runID) {
+            if !running, let path = state.metadataPath, !FileManager.default.fileExists(atPath: path) { return }
+            HistoryDirectories.shared.remember(RunLogWriter.directory(for: URL(fileURLWithPath: task.item.path)))
             importedScheduledRuns.insert(runID)
             let session = ExecutionSession(preferences: preferences)
             session.updateScheduled(task: task, state: state, root: root, running: running)
@@ -108,9 +111,20 @@ final class ProcessRunner: ObservableObject {
         }
     }
 
-    func select(_ id: UUID) {
-        guard selectedSessionID != id, sessions.contains(where: { $0.id == id }) else { return }
+    func select(_ id: UUID?) {
+        if let id, !sessions.contains(where: { $0.id == id }) { return }
+        guard selectedSessionID != id else { return }
         selectedSessionID = id
+    }
+
+    func historyDidRemove(_ recordIDs: Set<String>) {
+        guard !recordIDs.isEmpty else { return }
+        let removed = sessions.filter { session in
+            session.recordID.map { recordIDs.contains($0) } == true && !session.isRunning && !session.hasPendingHistoryWrites
+        }
+        removeSessions(Set(removed.map(\.id)))
+        hideSavedOutputRecords(recordIDs)
+        historyRevision += 1
     }
 
     @discardableResult
@@ -139,14 +153,21 @@ final class ProcessRunner: ObservableObject {
     func dismissSession(_ id: UUID) -> Bool {
         guard let session = sessions.first(where: { $0.id == id }),
               !session.isRunning, !session.hasPendingHistoryWrites else { return false }
+        if let recordID = session.recordID { hideSavedOutputRecords([recordID]) }
         removeSessions([id])
         return true
     }
 
     /// Release terminal buffers only when execution and its log finalization are complete.
-    func dismissCompletedSessions() {
+    func dismissCompletedSessions(savedIDs: Set<String> = []) {
         let removable = sessions.filter { !$0.isRunning && !$0.hasPendingHistoryWrites }
+        hideSavedOutputRecords(savedIDs.union(removable.compactMap(\.recordID)))
         removeSessions(Set(removable.map(\.id)))
+    }
+
+    func hideSavedOutputRecords(_ recordIDs: Set<String>) {
+        guard !recordIDs.isSubset(of: hiddenOutputRecordIDs) else { return }
+        hiddenOutputRecordIDs.formUnion(recordIDs)
     }
 
     private func removeSessions(_ ids: Set<UUID>) {

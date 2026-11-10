@@ -13,19 +13,18 @@ struct ScriptEditor: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                Image(systemName: "slider.horizontal.3").font(.title2).foregroundStyle(.tint)
+                WorkspaceSymbol("slider.horizontal.3", size: .header).foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(L("Script Configuration")).font(.title3.weight(.semibold))
+                    Text(L("Script Configuration")).font(WorkspaceTypography.dialogTitle)
                     Text(item.name.isEmpty ? L("Add a script and its parameters") : item.name)
-                        .font(.callout).foregroundStyle(.secondary).lineLimit(1)
+                        .font(WorkspaceTypography.body).foregroundStyle(.secondary).lineLimit(1)
                 }
                 Spacer()
                 Picker(L("Configuration Page"), selection: $editingParameters) {
                     Text(L("General")).tag(false)
                     Text(L("Parameters ({0})", "\(item.parameters.count)")).tag(true)
                 }.pickerStyle(.segmented).labelsHidden().frame(width: 250)
-            }.padding(22).background(.bar)
-            Divider()
+            }.padding(22).background(WorkspaceStyle.chrome)
             Form {
                 if !editingParameters {
                     Section {
@@ -57,32 +56,32 @@ struct ScriptEditor: View {
                 } else {
                     Section {
                         Text(L("Arguments are passed in list order. Edit their configuration below."))
-                            .font(.callout).foregroundStyle(.secondary)
+                            .font(WorkspaceTypography.body).foregroundStyle(.secondary)
                     }
                     Section {
                         if item.parameters.isEmpty {
                             Text(L("No parameters yet. Click “Add Parameter” to add a positional argument, named argument, or flag."))
-                                .font(.callout).foregroundStyle(.secondary).padding(.vertical, 12)
+                                .font(WorkspaceTypography.body).foregroundStyle(.secondary).padding(.vertical, 12)
                         }
                         ForEach(item.parameters) { parameter in
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack(spacing: 10) {
                                         HStack(spacing: 10) {
                                             Text("\((item.parameters.firstIndex { $0.id == parameter.id } ?? 0) + 1)")
-                                                .font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 22)
+                                                .font(WorkspaceTypography.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 22)
                                             Text(parameter.name.isEmpty ? L("Unnamed Parameter") : parameter.name)
-                                                .font(.callout.weight(.medium)).lineLimit(1)
+                                                .font(WorkspaceTypography.bodyStrong).lineLimit(1)
                                             Spacer(minLength: 8)
-                                            Text(parameter.summary).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                                            Text(parameter.summary).font(WorkspaceTypography.caption).foregroundStyle(.secondary).lineLimit(1)
                                         }
                                     HStack(spacing: 10) {
-                                        Button { moveParameter(parameter.id, by: -1) } label: { Image(systemName: "arrow.up") }
+                                        Button { moveParameter(parameter.id, by: -1) } label: { WorkspaceSymbol("arrow.up").workspaceCompactTarget() }
                                             .disabled(item.parameters.first?.id == parameter.id).help(L("Move parameter up")).accessibilityLabel(L("Move parameter up"))
-                                        Button { moveParameter(parameter.id, by: 1) } label: { Image(systemName: "arrow.down") }
+                                        Button { moveParameter(parameter.id, by: 1) } label: { WorkspaceSymbol("arrow.down").workspaceCompactTarget() }
                                             .disabled(item.parameters.last?.id == parameter.id).help(L("Move parameter down")).accessibilityLabel(L("Move parameter down"))
                                         Button(role: .destructive) {
                                             item.parameters.removeAll { $0.id == parameter.id }
-                                        } label: { Image(systemName: "trash") }
+                                        } label: { WorkspaceSymbol("trash").workspaceCompactTarget() }
                                             .help(L("Delete parameter")).accessibilityLabel(L("Delete parameter"))
                                     }.buttonStyle(.borderless)
                                 }.padding(.vertical, 4)
@@ -93,7 +92,6 @@ struct ScriptEditor: View {
 
                 }
             }.formStyle(.grouped)
-            Divider()
             HStack(spacing: 12) {
                 if editingParameters {
                     Menu {
@@ -104,13 +102,13 @@ struct ScriptEditor: View {
                 }
                 if let error {
                     Label(error, systemImage: "exclamationmark.circle.fill")
-                        .font(.caption).foregroundStyle(.red).textSelection(.enabled)
+                        .font(WorkspaceTypography.caption).foregroundStyle(.red).textSelection(.enabled)
                 }
                 Spacer(minLength: 12)
                 Button(L("Cancel")) { dismiss() }.keyboardShortcut(.cancelAction)
                 Button(L("Save")) { saveItem() }.keyboardShortcut(.defaultAction).workspacePrimaryAction()
-            }.padding(18).background(.bar)
-        }.frame(width: 760, height: 660)
+            }.padding(18).background(WorkspaceStyle.chrome)
+        }.frame(width: 760, height: 660).workspaceTypography()
     }
     // SwiftUI may read a retiring row after deletion. Resolve by ID on every access;
     // never retain the array-index bindings produced by ForEach($array).
@@ -212,10 +210,10 @@ struct ScriptEditor: View {
                         }
                     }
                 }
-            }.textFieldStyle(.roundedBorder).font(.callout)
+            }.textFieldStyle(.roundedBorder).font(WorkspaceTypography.body)
             if parameter.wrappedValue.passing == .flag {
                 Text(L("Passes the argument name when enabled and omits it when disabled; does not pass true or false."))
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
             } else if parameter.wrappedValue.kind == .select {
                 optionFields(parameter)
             }
@@ -225,12 +223,12 @@ struct ScriptEditor: View {
     private func optionFields(_ parameter: Binding<ScriptParameter>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(L("Labels appear in the interface; values are passed to the script."))
-                .font(.caption).foregroundStyle(.secondary)
+                .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
             HStack {
                 Text(L("Display Label")).frame(maxWidth: .infinity, alignment: .leading)
                 Text(L("Argument Value")).frame(maxWidth: .infinity, alignment: .leading)
                 Color.clear.frame(width: 28, height: 1)
-            }.font(.caption).foregroundStyle(.secondary)
+            }.font(WorkspaceTypography.caption).foregroundStyle(.secondary)
             ForEach(Array(parameter.wrappedValue.options.enumerated()), id: \.offset) { index, option in
                 let binding = optionBinding(parameter, index: index, fallback: option)
                 HStack {
@@ -244,14 +242,14 @@ struct ScriptEditor: View {
                         updated.options.remove(at: index)
                         parameter.wrappedValue = updated
                     } label: {
-                        Image(systemName: "minus.circle")
+                        WorkspaceSymbol("minus.circle").workspaceCompactTarget()
                     }.help(L("Delete option")).accessibilityLabel(L("Delete option"))
                 }
             }
             HStack {
                 Button(L("Add Option")) { parameter.wrappedValue.options.append(ParameterOption()) }
                 Spacer()
-                Text(L("Default Value")).font(.callout).foregroundStyle(.secondary)
+                Text(L("Default Value")).font(WorkspaceTypography.body).foregroundStyle(.secondary)
                 TextField(L("Default Value"), text: parameter.defaultValue, prompt: Text(L("Enter an option value, or leave empty")))
                     .labelsHidden().textFieldStyle(.roundedBorder).accessibilityLabel(L("Default option value"))
             }

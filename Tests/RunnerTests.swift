@@ -19,6 +19,9 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
     _ = NSApplication.shared
     do {
         try runLocalizationSelfTests()
+        runConfigurationValidationSelfTests()
+        runParameterCallHistorySelfTests()
+        try runScheduleHistorySelfTests()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("scriptdeck-tests-\(UUID())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -230,6 +233,35 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         var concurrentHistorySaved = false
         concurrent.afterHistorySaved { concurrentHistorySaved = true }
         pump(until: { concurrentHistorySaved })
+        let reopenedRunner = ProcessRunner()
+        let reopenedHistory = HistoryViewModel()
+        let logDirectory = RunLogWriter.directory(for: concurrentScript)
+        var reopenedLogs: [String: String] = [:]
+        var reloadFinished = false
+        Task {
+            await reopenedHistory.reload(directories: [logDirectory, logDirectory])
+            for entry in reopenedHistory.entries {
+                await reopenedHistory.load(entry)
+                if reopenedHistory.pageRecordID == entry.id {
+                    reopenedLogs[entry.id] = reopenedHistory.page?.text
+                }
+            }
+            reloadFinished = true
+        }
+        pump(until: { reloadFinished })
+        let restoredRecords = RunOutputRecord.merge(sessions: reopenedRunner.sessions, history: reopenedHistory.entries, hiding: [])
+        let expectedIDs = Set([firstSession.recordID!, secondSession.recordID!])
+        check(restoredRecords.count == 2 && Set(restoredRecords.map(\.id)) == expectedIDs,
+              "A fresh runner restores both saved executions exactly once")
+        check(reopenedLogs[firstSession.recordID!]?.contains("reply:alpha:one") == true &&
+              reopenedLogs[firstSession.recordID!]?.contains("reply:beta:two") == false &&
+              reopenedLogs[secondSession.recordID!]?.contains("reply:beta:two") == true &&
+              reopenedLogs[secondSession.recordID!]?.contains("reply:alpha:one") == false,
+              "Reopened records load their own persisted log output")
+        let mergedRecords = RunOutputRecord.merge(sessions: concurrent.sessions, history: reopenedHistory.entries,
+                                                  hiding: [firstSession.recordID!])
+        check(mergedRecords.map(\.id) == [secondSession.recordID!] && mergedRecords.first?.session === secondSession,
+              "Live sessions take precedence over saved copies and hidden rows stay hidden")
         check(!concurrent.hasPendingHistoryWrites && concurrent.protectedHistoryRecordIDs.isEmpty, "所有会话日志落盘后统一解除保护")
         let concurrentLogDirectory = RunLogWriter.directory(for: concurrentScript)
         let concurrentMetadata = try FileManager.default.contentsOfDirectory(at: concurrentLogDirectory, includingPropertiesForKeys: nil).filter { $0.pathExtension == "json" }

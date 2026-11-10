@@ -30,7 +30,7 @@ final class RunnerTerminalView: TerminalView, TerminalViewDelegate, LocalProcess
     }
     private func configureAppearance() {
         effectiveAppearance.performAsCurrentDrawingAppearance {
-            nativeBackgroundColor = NSColor.textBackgroundColor.usingColorSpace(.deviceRGB) ?? .textBackgroundColor
+            nativeBackgroundColor = WorkspaceStyle.canvasNSColor.usingColorSpace(.deviceRGB) ?? WorkspaceStyle.canvasNSColor
             nativeForegroundColor = NSColor.textColor.usingColorSpace(.deviceRGB) ?? .textColor
         }
     }

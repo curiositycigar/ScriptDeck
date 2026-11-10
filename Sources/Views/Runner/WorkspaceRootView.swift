@@ -11,26 +11,33 @@ struct WorkspaceRootView: View {
     @StateObject private var navigation = WorkspaceNavigation()
 
     var body: some View {
-        VStack(spacing: 0) {
-            if outputExpanded {
-                VSplitView {
-                    currentWorkspace.frame(minHeight: 280, idealHeight: 460)
-                    TaskOutputView(runner: runner, workspaces: workspaces, outputExpanded: $outputExpanded)
-                        .frame(minHeight: 140, idealHeight: 240)
-                }
-            } else {
-                currentWorkspace.frame(maxHeight: .infinity)
-                Divider()
-                TaskOutputView(runner: runner, workspaces: workspaces, outputExpanded: $outputExpanded)
-            }
+        WorkspaceOutputLayout(expanded: outputExpanded) {
+            workspaceShell
+        } output: {
+            TaskOutputView(runner: runner, workspaces: workspaces, outputExpanded: $outputExpanded)
         }
-        .frame(minWidth: 680, minHeight: 540)
+        .frame(minWidth: preferences.sidebarVisible ? 800 : 680, minHeight: 540)
+        .workspaceTypography()
         .onChange(of: runner.launchRevision) { _ in outputExpanded = true }
         .onAppear { presentWorkspaceError() }
         .onChange(of: workspaces.error) { _ in presentWorkspaceError() }
         .alert(L("Scheduled Task Operation Failed"), isPresented: Binding(get: { schedules.error != nil }, set: { if !$0 { schedules.error = nil } })) {
             Button(L("OK"), role: .cancel) { schedules.error = nil }
         } message: { Text(schedules.error ?? "") }
+    }
+
+    private var workspaceShell: some View {
+        HStack(spacing: 0) {
+            WorkspaceRailView(workspaces: workspaces, navigation: navigation,
+                              showSettings: {
+                                  preferences.settingsTab = .general
+                                  openWindow(id: "settings")
+                              })
+            Divider()
+            currentWorkspace
+                .transition(.opacity)
+        }
+        .workspaceAnimation(value: workspaces.selectedID, motion: .layout)
     }
 
     private func presentWorkspaceError() {
@@ -56,20 +63,15 @@ struct WorkspaceRootView: View {
                 .id(workspace.id)
         } else {
             HSplitView {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(L("WORKSPACES")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Button(L("Add Workspace…")) { WorkspaceDialogs.add(to: workspaces) }
-                    Spacer()
-                    Text(L("Scheduled Tasks")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                    Button { navigation.destination = .schedules } label: {
-                        Label(L("All Scheduled Tasks"), systemImage: "calendar.badge.clock").padding(8)
-                    }
-                    .buttonStyle(.plain)
-                    .background(navigation.destination == .schedules ? WorkspaceStyle.selectionColor : Color.clear,
-                                in: RoundedRectangle(cornerRadius: 7))
-                }.padding(14)
-                .frame(minWidth: 220, idealWidth: 250, maxWidth: 330, maxHeight: .infinity)
-                .background(.bar)
+                if navigation.destination == .scripts {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text(L("WORKSPACES")).font(WorkspaceTypography.sectionLabel).foregroundStyle(.secondary)
+                        Button(L("Add Workspace…")) { WorkspaceDialogs.add(to: workspaces) }
+                        Spacer()
+                    }.padding(14)
+                    .frame(minWidth: 220, idealWidth: 250, maxWidth: 330, maxHeight: .infinity)
+                    .background(WorkspaceStyle.sidebar)
+                }
                 ZStack {
                     VStack(spacing: 0) {
                         WorkspaceEmptyState(symbol: "square.stack.3d.up", title: L("Your Script Workspace"),
@@ -86,17 +88,28 @@ struct WorkspaceRootView: View {
                         .allowsHitTesting(navigation.destination == .schedules)
                         .accessibilityHidden(navigation.destination != .schedules)
                 }
+                .workspaceAnimation(value: navigation.destination, motion: .layout)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .navigationTitle("ScriptDeck")
-            .toolbar {
-                ToolbarItem {
-                    Button(L("Manage Workspaces…")) {
-                        preferences.settingsTab = .workspaces
-                        openWindow(id: "settings")
-                    }
-                }
-            }
+        }
+    }
+}
+
+/// Keep both panes in the same native split view when output is toggled.
+/// Reparenting the workspace into/out of a split view remounts its UI and fades it.
+struct WorkspaceOutputLayout<Workspace: View, Output: View>: View {
+    let expanded: Bool
+    @ViewBuilder let workspace: Workspace
+    @ViewBuilder let output: Output
+
+    var body: some View {
+        VSplitView {
+            workspace
+                .frame(minHeight: 280, idealHeight: 460)
+            output
+                .frame(minHeight: expanded ? 140 : 46,
+                       idealHeight: expanded ? 240 : 46,
+                       maxHeight: expanded ? .infinity : 46)
         }
     }
 }

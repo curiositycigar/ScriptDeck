@@ -10,6 +10,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // output panel changes the root layout. The titlebar owns its own space.
         window.styleMask.remove(.fullSizeContentView)
         window.titlebarAppearsTransparent = false
+        // AppKit owns the opaque titlebar and dragging outside toolbar buttons.
+        window.backgroundColor = .windowBackgroundColor
+        window.isMovable = true
+        window.isMovableByWindowBackground = true
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)

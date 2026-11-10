@@ -9,7 +9,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$ROOT/.build/module-ca
 bash "$ROOT/Scripts/make-icon.sh"
 cp "$ROOT/Assets/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
-swift build --package-path "$ROOT" \
+swift build --build-system native --package-path "$ROOT" \
     --cache-path "$ROOT/.build/package-cache" \
     --config-path "$ROOT/.build/package-config" \
     --security-path "$ROOT/.build/package-security" \

@@ -41,7 +41,7 @@ enum ScheduleExecutor {
         do {
             guard task.item.path.hasPrefix("/") else { throw RunnerError(message: L("The script must use an absolute path.")) }
             let log = try RunLogWriter(id: state.runID!, item: task.item, workspaceID: task.workspaceID,
-                                      workspaceName: task.workspaceName, startedAt: now) { message in
+                                      workspaceName: task.workspaceName, startedAt: now, scheduledTaskID: task.id) { message in
                 FileHandle.standardError.write(Data((message + "\n").utf8))
             }
             writer = log

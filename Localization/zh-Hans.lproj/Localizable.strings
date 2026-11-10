@@ -53,7 +53,6 @@
 "Close" = "关闭";
 "Collapse Output" = "收起运行输出";
 "Completed successfully" = "执行成功";
-"Completed · {0}" = "已完成 · {0}";
 "Configuration Page" = "配置页面";
 "Configure Scheduled Task" = "配置定时任务";
 "Copy Path" = "复制路径";
@@ -484,3 +483,24 @@
 "Fill Password from Keychain (⇧⌘K)" = "从钥匙串填入密码（⇧⌘K）";
 "Fill Password from Keychain" = "从钥匙串填入密码";
 "Script Credentials" = "脚本凭据";
+"Scripts" = "脚本";
+
+"Empty Folder" = "空文件夹";
+
+"More Actions" = "更多操作";
+
+"Recent Parameters" = "最近参数";
+
+"Run this script to remember up to five recent parameter sets." = "运行脚本后，将记住最近 5 组参数。";
+
+"Selecting a record fills the form without running the script." = "选择记录将回填参数，不会执行脚本。";
+
+"On" = "开启";
+
+"Off" = "关闭";
+
+"Empty" = "空";
+
+"Do not ask again" = "下次不再提示";
+
+"New runs are linked to this scheduled task. Older records may not be identifiable." = "新的执行记录会关联此定时任务，较早的记录可能无法识别。";

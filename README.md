@@ -23,9 +23,11 @@ The interface supports **English** and **Simplified Chinese**, following the sys
 
 ## Features
 
-- Independent workspaces with nested folders, search, script import, and configuration editing.
+- Independent workspaces with nested folders, search, script import, and configuration editing. A compact navigation rail provides workspace switching and direct access to schedules and settings. Use **⌘F** to focus script search and **⌘N** to create a script.
 - Positional arguments, named arguments, boolean flags, file/folder pickers, and labeled selection options.
-- Single-row parameter fields with `*` for required values, plus script details in the information popover beside the script name.
+- Adaptive parameter forms fill the available width, size the label column automatically, and stack labels above fields in narrow panels. Required fields use `*`. File and folder inputs include a **Show in Finder** button; script details are in the information popover beside the script name.
+- The history button beside Edit restores one of the last five distinct parameter calls per script and workspace; snapshots stay in local app preferences and can be cleared.
+- Theme-aware system surfaces shared by the parameter view and terminal, with a compact output panel and a resizable session list.
 - Multiple simultaneous runs, each with its own interactive terminal, status, duration, and log. Interrupt and stop actions apply to the selected session.
 - One-time, daily, weekly, and fixed-interval schedules backed by macOS `launchd`. Create them from **All Scheduled Tasks** or **Schedule…** on a script's run bar.
 - Menu bar access. Closing the window keeps the app running; scheduled tasks can also run after the app quits.
@@ -70,11 +72,15 @@ MyScripts/
 
 `file` and `cwd` resolve relative to the workspace; omitted `cwd` uses the script's folder. Supported interpreters include Bash, Zsh, Python, Node.js, `direct` (shebang), and an absolute executable path. Arguments are passed separately, in configuration order. See the [schema](Resources/library.schema.json) and [script authoring guide](ExampleLibrary/AI-INSTRUCTIONS.md) for all fields and parameter styles.
 
+You can give an AI coding assistant access to your workspace folder to create, edit, and organize scripts and their `library.json` configurations. Point it to the [script authoring guide](ExampleLibrary/AI-INSTRUCTIONS.md) for the configuration format.
+
 External configuration edits are detected automatically. Invalid or conflicting edits produce a warning and preserve the last valid in-memory configuration. Importing a script from outside the library copies it into `scripts/`; removing a script configuration or workspace registration preserves the underlying files.
 
-Logs and metadata are saved beside each script in `logs/<script filename>/`. Log creation must succeed before execution starts. History deletion permanently removes the corresponding `.log` and `.json` files after confirmation, skipping active or still-saving records. Each log starts with the assembled execution command, including the interpreter, script path, and shell-quoted arguments. Keystrokes are not separately recorded, but script output and echoed input appear in logs. Avoid putting passwords in script arguments or printing them.
+Logs and metadata are saved beside each script in `logs/<script filename>/`. Log creation must succeed before execution starts. History deletion permanently removes the corresponding `.log` and `.json` files after confirmation, skipping active or still-saving records. For individual records, select **Do not ask again** when confirming deletion to skip future single-record prompts; bulk clearing still requires confirmation. Each log starts with the assembled execution command, including the interpreter, script path, and shell-quoted arguments. Keystrokes are not separately recorded, but script output and echoed input appear in logs. Avoid putting passwords in script arguments or printing them.
 
-The history **Clear** menu can remove filtered results, all loaded history, or records older than 24 hours, seven days, or one calendar month. Age is measured from each run's start time. Age-based cleanup applies across all loaded workspaces regardless of filters; confirmation shows the cutoff and record count. Run Output hides empty groups and preserves each terminal's contents when switching records. Its task-list footer removes session records without deleting saved history or logs.
+Scheduled task cards use an adaptive grid with equal heights and bottom-aligned controls. Each card includes an execution-history button scoped to that task. New log metadata stores the schedule ID; older records can only be linked when the task still identifies its latest run. Clearing filtered results in this view only removes that task’s records.
+
+The history **Clear** menu can remove filtered results, all loaded history, or records older than 24 hours, seven days, or one calendar month. Age is measured from each run's start time. Age-based cleanup applies across all loaded workspaces regardless of filters; confirmation shows the cutoff and record count. Run Output lists live sessions and saved executions together, newest first. Select a saved execution to read its log after reopening the app. The list footer hides records for the current app session while keeping saved history and logs.
 
 Use the key button beside a script's name to save a password in macOS Keychain and associate it with that script. Settings → Credentials manages saved credentials; names and workspace/script associations stay in local app preferences, outside the script library. A credential can be associated with several scripts. In a running manual session, click the Run Output key button or press **⇧⌘K**, select a credential, and choose **Fill Password**. Associated credentials appear first. The optional Return submits the input immediately. Filling requires the original session to remain selected and running, with terminal input echo disabled (for example, Bash `read -s`); scheduled background runs cannot receive input. Keychain may request system authorization. Filled passwords go directly to the PTY, without the clipboard or command arguments, but a script that prints the password can still expose it in output and logs.
 
@@ -93,4 +99,4 @@ Outputs are `dist/ScriptDeck.app` and `dist/ScriptDeck-<version>.zip`. Packaging
 
 `Resources/Info.plist` is the version source: `CFBundleShortVersionString` is the public version and `CFBundleVersion` is the build number. Update both manually for a release; building does not increment either value. The build copies this file into the app, and packaging uses the public version in the ZIP filename.
 
-See [Architecture](Docs/Architecture.md) for maintenance and testing details, [Localization](Docs/Localization.md) for translation guidance, and [Icon Design](Docs/Icon-design.md) for icon assets.
+See [Architecture](Docs/Architecture.md) for maintenance and testing, [Localization](Docs/Localization.md) for translations, [Icon Design](Docs/Icon-design.md) for icon assets, and [Interface Guidelines](Docs/Interface-guidelines.md) for typography, symbol sizes, and grouping.

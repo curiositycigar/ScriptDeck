@@ -1,7 +1,7 @@
 {
   "$schema" : "library.schema.json",
   "folders" : [
-
+    "Examples/Empty"
   ],
   "scripts" : [
     {
@@ -59,14 +59,20 @@
           "type" : "text"
         },
         {
-          "id" : "5DBE42B6-4AF5-4C8D-99E8-B054A2EF06CD",
-          "label" : "Parameter 4",
+          "argumentName" : "--dry-run",
+          "default" : "false",
+          "id" : "3326C619-9820-4797-AC72-8DD71894C1AD",
+          "label" : "Dry Run",
+          "passing" : "flag",
           "required" : false,
           "type" : "text"
         },
         {
-          "id" : "C77080F2-7410-49B3-8E63-03DAE6FEEADF",
-          "label" : "Parameter 5",
+          "argumentFormat" : "separated",
+          "argumentName" : "--name-arg",
+          "id" : "CB4571A0-B533-4199-AD84-F4DCDD181A9D",
+          "label" : "Named Arg",
+          "passing" : "named",
           "required" : false,
           "type" : "text"
         }

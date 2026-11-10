@@ -21,6 +21,7 @@ struct ExecutionRecord: Codable, Identifiable {
     var scriptFile: String
     var workspaceID: String?
     var workspaceName: String
+    var scheduledTaskID: String?
     var startedAt: Date
     var endedAt: Date?
     var outcome: ExecutionOutcome = .running
@@ -36,5 +37,23 @@ struct HistoryEntry: Identifiable {
     var logURL: URL { metadataURL.deletingLastPathComponent().appendingPathComponent(record.logFilename) }
     func status(activeRecordID: String?) -> String {
         record.outcome == .running && id != activeRecordID ? L("Ended unexpectedly") : record.outcome.title
+    }
+}
+
+/// Older records can only be attributed when the schedule still identifies their run.
+struct ScheduleHistoryScope {
+    let task: ScheduledTask
+    let latestRunID: String?
+    let metadataPath: String?
+
+    func contains(_ record: ExecutionRecord) -> Bool {
+        if let id = record.scheduledTaskID { return id == task.id }
+        return record.id == latestRunID
+    }
+
+    var directories: [URL] {
+        var result = [RunLogWriter.directory(for: URL(fileURLWithPath: task.item.path))]
+        if let metadataPath { result.append(URL(fileURLWithPath: metadataPath).deletingLastPathComponent()) }
+        return result
     }
 }

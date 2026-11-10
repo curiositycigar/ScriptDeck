@@ -2,6 +2,8 @@
 
 ScriptDeck is a single-module SwiftUI/AppKit macOS app built with Swift Package Manager. SwiftTerm provides the native interactive terminal; exact dependency versions are recorded in `Package.resolved`.
 
+Build and self-check scripts explicitly select SwiftPM's native build system to preserve the executable and raw localization-resource layout expected by packaging and tests across Xcode versions, including Xcode 27.2's change of default build engine.
+
 ## Project structure
 
 | Path | Responsibility |
@@ -34,7 +36,9 @@ Root shell scripts forward to `Scripts/`. `.build/` and `dist/` are generated an
 
 `RunnerView.swift` owns browsing state, layout, and lifecycle. Its extensions separate workspace actions, navigation, configuration, and execution actions while sharing internal state. Extract reusable controls as independent views with values, bindings, or callbacks.
 
-The configuration pane presents one parameter per row with `*` markers for required values. The script-name information button opens a details popover with selectable paths and icon actions; path copying briefly displays a confirmation. Disclosure headers have enlarged hit areas and toggle from their names. Sidebar folders retain native disclosure groups and independent list rows; the generic custom disclosure style must not wrap the sidebar tree into a single selectable row.
+The configuration pane presents one parameter per row with `*` markers for required values. `ParameterRowLayout` switches between measured label columns and stacked fields based on available width, preserving the same native inputs and aligning validation messages below them. The script-name information button opens a details popover with selectable paths and icon actions; path copying briefly displays a confirmation. Disclosure headers have enlarged hit areas and toggle from their names. The sidebar tree uses independent native list rows with explicit indentation and folder-state icons. The complete script split view remains mounted but hidden, disabled, and inaccessible during Scheduled Tasks; the dashboard fills the browser width. Switching back restores search, folder expansion and selection, native scroll positions, and parameter state without changing the sidebar visibility preference.
+
+Typography, symbol sizes, and custom control hit areas are centralized in `WorkspaceTypography.swift`. Standalone screens establish the shared baseline with `workspaceTypography()`. See [Interface Guidelines](Interface-guidelines.md) for the scale, native-control exceptions, and minimal boundary rules.
 
 Keep JSON operations in library/scheduling services and command construction in execution services. Update the models, canonical schema, example configuration, and documentation together when changing configuration fields. Extra JSON fields are not preserved by the app editor. Version and build numbers live in `Resources/Info.plist`.
 
@@ -54,7 +58,7 @@ Global preferences hold sidebar visibility, language, terminal font size, and sc
 
 The helper enters the requested directory and loads a login Zsh environment before executing the interpreter with separate argv values. User arguments are never concatenated into executable shell source. Ctrl+C follows terminal behavior; stop signals the root and current foreground process groups with TERM, and force stop uses KILL. Processes that detach from the session require separate management.
 
-`TaskOutputView` displays running and completed tasks beside the selected terminal. Duration freezes on completion. Removing a completed session releases its terminal after logs finish saving and preserves history. Empty running and completed groups are hidden; an empty task list prompts the user to select a script to run. The task-list footer removes selected or completed sessions while preserving execution history and logs. Terminal copy and process controls apply to the selected session. App quit is blocked by active manual sessions and waits for completed log writes; background schedules run independently.
+`TaskOutputView` merges current sessions with saved execution records by record ID and sorts them by start time. Current sessions retain their terminal buffers and process controls. Saved executions load a read-only, paginated log on selection. The task-list footer hides records until the app restarts and releases completed terminals after their logs finish saving. App quit is blocked by active manual sessions and waits for completed log writes. Background schedules run independently.
 
 SwiftTerm's MIT license is included in `Resources/ThirdPartyNotices.txt`. When upgrading it, update the exact package version, lockfile, notices, and toolchain requirements. PortableGraphics is disabled and unused dependencies are pruned; macOS uses native image support.
 

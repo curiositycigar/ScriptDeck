@@ -27,7 +27,7 @@ struct ScriptRunnerApp: App {
             }
         }
         .defaultSize(width: 1120, height: 800)
-        .windowToolbarStyle(.unified)
+        .windowToolbarStyle(.unifiedCompact)
         .commands { RunnerCommands(workspaces: workspaces, runner: runner) }
 
         MenuBarExtra {
