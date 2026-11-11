@@ -11,6 +11,15 @@ struct EditableSelectionField: View {
                       text: $text)
                 .textFieldStyle(.roundedBorder)
                 .accessibilityLabel(parameter.name)
+            if !text.isEmpty {
+                Button { text = "" } label: {
+                    WorkspaceSymbol("xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help(L("Clear"))
+                .accessibilityLabel(L("Clear") + " · " + parameter.name)
+            }
             Menu {
                 ForEach(parameter.options) { option in
                     Button { text = option.value } label: {
