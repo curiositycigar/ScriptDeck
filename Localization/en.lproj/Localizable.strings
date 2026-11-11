@@ -504,3 +504,14 @@
 "Do not ask again" = "Do not ask again";
 
 "New runs are linked to this scheduled task. Older records may not be identifiable." = "New runs are linked to this scheduled task. Older records may not be identifiable.";
+
+"Choose where to create a new workspace folder." = "Choose where to create a new workspace folder.";
+"Export Workspace Package…" = "Export Workspace Package…";
+"Exports registered scripts and their current parameter values. Review script contents and parameter values before sharing." = "Exports registered scripts and their current parameter values. Review script contents and parameter values before sharing.";
+"Import" = "Import";
+"Import Workspace Package…" = "Import Workspace Package…";
+"This workspace package is invalid or uses an unsupported version." = "This workspace package is invalid or uses an unsupported version.";
+"Unable to export the script file for “{0}”." = "Unable to export the script file for “{0}”.";
+
+"Editable Selection" = "Editable Selection";
+"Choose a preset or enter a custom value. Preset labels appear in the menu; values are passed to the script." = "Choose a preset or enter a custom value. Preset labels appear in the menu; values are passed to the script.";

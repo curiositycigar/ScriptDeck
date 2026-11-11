@@ -277,7 +277,10 @@ extension RunnerView {
             }
         } else {
             HStack(spacing: 6) {
-                if parameter.kind == .select {
+                if parameter.kind == .editableSelect {
+                    EditableSelectionField(parameter: parameter, text: binding(for: parameter, scriptID: item.id))
+                        .focused($focusedParameter, equals: parameter.id)
+                } else if parameter.kind == .select {
                     Picker("", selection: binding(for: parameter, scriptID: item.id)) {
                         Text(parameter.placeholder.isEmpty ? L("Choose…") : parameter.placeholder).tag("")
                         ForEach(parameter.options) { option in Text(option.label).tag(option.value) }
@@ -290,14 +293,6 @@ extension RunnerView {
                         .textFieldStyle(.roundedBorder)
                         .focused($focusedParameter, equals: parameter.id)
                         .accessibilityLabel(parameter.name)
-                        .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
-                            guard parameter.kind != .text, let provider = providers.first else { return false }
-                            _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                                guard let url else { return }
-                                DispatchQueue.main.async { session.values[item.id, default: [:]][parameter.id] = url.path }
-                            }
-                            return true
-                        }
                 }
                 if parameter.kind == .file || parameter.kind == .folder {
                     Button {
@@ -314,6 +309,17 @@ extension RunnerView {
                     .buttonStyle(WorkspaceIconButtonStyle()).foregroundStyle(.secondary)
                     .help(L("Show in Finder")).accessibilityLabel(L("Show in Finder"))
                     .disabled(value.isEmpty || !FileManager.default.fileExists(atPath: path))
+                }
+            }
+            .contentShape(Rectangle())
+            .onDrop(of: parameter.kind == .file || parameter.kind == .folder ? [UTType.fileURL] : [],
+                    isTargeted: nil) { providers in
+                loadDroppedFileURLs(providers) { urls in
+                    guard !WorkspaceDialogs.importDroppedPackage(urls, to: workspaces),
+                          let url = urls.first,
+                          let isDirectory = try? url.resourceValues(forKeys: [.isDirectoryKey]).isDirectory,
+                          isDirectory == (parameter.kind == .folder) else { return }
+                    binding(for: parameter, scriptID: item.id).wrappedValue = url.path
                 }
             }
         }

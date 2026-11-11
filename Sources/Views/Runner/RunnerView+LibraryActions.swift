@@ -37,6 +37,8 @@ extension RunnerView {
             }
             Divider()
             Button(L("Add Workspace…"), action: addWorkspace)
+            Button(L("Import Workspace Package…")) { WorkspaceDialogs.importPackage(to: workspaces) }
+            Button(L("Export Workspace Package…")) { WorkspaceDialogs.export(workspaceInfo, from: workspaces) }
             Button(L("Manage Workspaces…"), action: manageWorkspaces)
         } label: {
             HStack(spacing: 8) {

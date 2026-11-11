@@ -1,7 +1,17 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 @MainActor func runNavigationSelfTests(root: URL) throws {
+    let droppedFiles = [root.appendingPathComponent("文件 one.sh"), root.appendingPathComponent("file two.sh")]
+    let providers = droppedFiles.map {
+        NSItemProvider(item: $0.dataRepresentation as NSData, typeIdentifier: UTType.fileURL.identifier)
+    }
+    var loadedFiles: [URL]?
+    check(loadDroppedFileURLs(providers) { loadedFiles = $0 }, "Accept file URL pasteboard data")
+    pump(until: { loadedFiles != nil })
+    check(loadedFiles == droppedFiles, "Load all dropped paths in order, preserving spaces and Unicode")
+
     let suite = "ScriptDeck.NavigationTests.\(UUID())"
     let defaults = UserDefaults(suiteName: suite)!
     defer { defaults.removePersistentDomain(forName: suite) }
@@ -130,10 +140,57 @@ import SwiftUI
     window.contentView = nil
     checkOutputLayoutPersistence(workspaces: workspaces, preferences: preferences,
                                  runner: runner, schedules: schedules)
+    try checkScheduleViewport(root: root, workspaces: workspaces, preferences: preferences, runner: runner, item: script)
     if ProcessInfo.processInfo.environment["RUNNER_CAPTURE_UI"] == "1" {
         try captureWorkspaceAppearance(workspaces: workspaces, preferences: preferences,
                                        runner: runner, schedules: schedules)
     }
+}
+
+@MainActor private func checkScheduleViewport(root: URL, workspaces: WorkspaceStore,
+                                              preferences: AppPreferences, runner: ProcessRunner, item: ScriptItem) throws {
+    let scheduleRoot = root.appendingPathComponent("schedule-viewport")
+    let workspace = workspaces.selected!
+    for index in 1...12 {
+        let task = ScheduledTask(name: "Task \(index)", enabled: false, workspaceID: workspace.id,
+                                 workspaceName: workspace.name, item: item, values: [:])
+        try ScheduleFiles.write(task, ScheduleFiles.definition(scheduleRoot, task.id))
+    }
+    let schedules = ScheduleStore(runner: runner, root: scheduleRoot, startMonitoring: false)
+    check(schedules.tasks.count == 12, "Load a task list taller than the schedule viewport")
+    let navigation = WorkspaceNavigation()
+    navigation.destination = .schedules
+    let host = NSHostingView(rootView: WorkspaceOutputLayout(expanded: true) {
+        RunnerView(store: workspaces.library(for: workspace), runner: runner, workspaces: workspaces,
+                   preferences: preferences, session: workspaces.session(for: workspace), workspaceInfo: workspace,
+                   schedules: schedules, navigation: navigation, outputExpanded: .constant(true))
+    } output: {
+        TaskOutputView(runner: runner, workspaces: workspaces, outputExpanded: .constant(true))
+    })
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 850, height: 720),
+                          styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+    window.contentView = host
+    defer { window.contentView = nil }
+    func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+    func layout() {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+        host.layoutSubtreeIfNeeded()
+    }
+    layout()
+    let split = descendants(host).compactMap { $0 as? NSSplitView }.first { !$0.isVertical }!
+    let pane = split.subviews[0]
+    let scroll = descendants(pane).compactMap { $0 as? NSScrollView }
+        .first { abs($0.bounds.width - pane.bounds.width) < 1 }!
+    let tallViewport = scroll.bounds.height
+    window.setContentSize(NSSize(width: 850, height: 460))
+    layout()
+    let viewport = scroll.convert(scroll.bounds, to: pane)
+    check(viewport.height < tallViewport && (scroll.documentView?.frame.height ?? 0) > viewport.height,
+          "The schedule list viewport shrinks and remains scrollable")
+    check(viewport.minY > 30 && viewport.maxY < pane.bounds.maxY - 30,
+          "The schedule viewport reserves space for the header and footer within the short pane")
+    check(host.bounds.insetBy(dx: -1, dy: -1).contains(pane.convert(pane.bounds, to: host)),
+          "The schedule pane fits within the resized window")
 }
 
 /// Render real views against temporary workspaces, without running scripts or installing schedules.

@@ -1,7 +1,7 @@
 import Foundation
 
 enum ParameterKind: String, Codable, CaseIterable, Identifiable {
-    case text, file, folder, select
+    case text, file, folder, select, editableSelect
     var id: String { rawValue }
     var title: String {
         switch self {
@@ -9,6 +9,7 @@ enum ParameterKind: String, Codable, CaseIterable, Identifiable {
         case .file: return L("File")
         case .folder: return L("Folder")
         case .select: return L("Selection")
+        case .editableSelect: return L("Editable Selection")
         }
     }
 }
@@ -92,7 +93,7 @@ extension ScriptParameter {
         try c.encode(required, forKey: .required)
         if !defaultValue.isEmpty { try c.encode(defaultValue, forKey: .defaultValue) }
         if !placeholder.isEmpty { try c.encode(placeholder, forKey: .placeholder) }
-        if kind == .select { try c.encode(options, forKey: .options) }
+        if kind == .select || kind == .editableSelect { try c.encode(options, forKey: .options) }
     }
 }
 

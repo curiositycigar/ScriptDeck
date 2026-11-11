@@ -37,6 +37,12 @@ struct RunnerCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button(L("Add Workspace…")) { WorkspaceDialogs.add(to: workspaces) }
                 .keyboardShortcut("o", modifiers: .command)
+            Button(L("Import Workspace Package…")) { WorkspaceDialogs.importPackage(to: workspaces) }
+            Button(L("Export Workspace Package…")) {
+                if let workspace = workspaces.selected { WorkspaceDialogs.export(workspace, from: workspaces) }
+            }
+            .disabled(workspaces.selected == nil)
+            Divider()
             Button(L("New Script")) { actions?.newScript() }
                 .keyboardShortcut("n", modifiers: .command)
                 .disabled(actions?.canImport != true)

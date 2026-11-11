@@ -19,13 +19,18 @@ struct ScheduleDashboard: View {
             dashboardHeader
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
-            GeometryReader { geometry in
-                ScrollView {
-                    if schedules.tasks.isEmpty {
-                        WorkspaceEmptyState(symbol: "calendar.badge.clock", title: L("No scheduled tasks yet"),
-                                            message: L("Choose a workspace and script, then set a time or repeat interval. You can also create a schedule from the script's run bar to save its current parameters."))
-                            .frame(maxWidth: .infinity, minHeight: geometry.size.height)
-                    } else {
+                .fixedSize(horizontal: false, vertical: true)
+            Group {
+                if schedules.tasks.isEmpty {
+                    GeometryReader { geometry in
+                        ScrollView {
+                            WorkspaceEmptyState(symbol: "calendar.badge.clock", title: L("No scheduled tasks yet"),
+                                                message: L("Choose a workspace and script, then set a time or repeat interval. You can also create a schedule from the script's run bar to save its current parameters."))
+                                .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+                        }
+                    }
+                } else {
+                    ScrollView {
                         ScheduleCardGrid(minimumCardWidth: cardMinimumWidth, spacing: cardSpacing) {
                             ForEach(schedules.tasks) { task in taskRow(task) }
                         }
@@ -33,10 +38,12 @@ struct ScheduleDashboard: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+            .clipped()
             dashboardActions
                 .frame(maxWidth: .infinity)
                 .padding(.horizontal, 20).padding(.vertical, 12)
+                .fixedSize(horizontal: false, vertical: true)
                 .workspaceActionSurface()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -346,6 +353,10 @@ struct ScheduleEditor: View {
                         ForEach(item.parameters) { parameter in
                             if parameter.passing == .flag {
                                 Toggle(parameter.name, isOn: Binding(get: { value(parameter) == "true" }, set: { values[parameter.id] = $0 ? "true" : "false" }))
+                            } else if parameter.kind == .editableSelect {
+                                LabeledContent(parameter.name + (parameter.required ? " *" : "")) {
+                                    EditableSelectionField(parameter: parameter, text: binding(parameter))
+                                }
                             } else if parameter.kind == .select {
                                 Picker(parameter.name, selection: binding(parameter)) {
                                     Text(L("Choose an option")).tag("")

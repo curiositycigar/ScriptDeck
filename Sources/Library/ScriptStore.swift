@@ -64,7 +64,7 @@ final class ScriptStore: ObservableObject {
             throw RunnerError(message: L("This folder already contains library.json. Open it directly to preserve its configuration."))
         }
         try FileManager.default.createDirectory(at: directory.appendingPathComponent("scripts"), withIntermediateDirectories: true)
-        let data = try encode(LibraryDocument(scripts: []))
+        let data = try LibraryDocument().encoded()
         try data.write(to: configuration, options: .withoutOverwriting)
         if let schema = Bundle.main.url(forResource: "library.schema", withExtension: "json") {
             let target = directory.appendingPathComponent("library.schema.json")
@@ -129,11 +129,9 @@ final class ScriptStore: ObservableObject {
         try document.validate()
         return document
     }
-    private func encode(_ document: LibraryDocument) throws -> Data {
-        try document.validate()
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
-        return try encoder.encode(document)
+    func exportDocument() throws -> LibraryDocument {
+        try currentFileUnchanged()
+        return LibraryDocument(scripts: items, folders: folders)
     }
     private func currentFileUnchanged(expectedRevision: Int? = nil) throws {
         guard let fileURL else { throw RunnerError(message: L("Open or initialize a script library first.")) }
@@ -151,7 +149,7 @@ final class ScriptStore: ObservableObject {
             try currentFileUnchanged(expectedRevision: expectedRevision)
             guard let fileURL else { return false }
             let normalized = proposed.map(normalized)
-            let data = try encode(LibraryDocument(scripts: normalized, folders: proposedFolders ?? folders))
+            let data = try LibraryDocument(scripts: normalized, folders: proposedFolders ?? folders).encoded()
             try data.write(to: fileURL, options: .atomic)
             items = normalized
             folders = proposedFolders ?? folders

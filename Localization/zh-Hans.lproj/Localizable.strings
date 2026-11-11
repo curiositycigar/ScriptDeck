@@ -504,3 +504,14 @@
 "Do not ask again" = "下次不再提示";
 
 "New runs are linked to this scheduled task. Older records may not be identifiable." = "新的执行记录会关联此定时任务，较早的记录可能无法识别。";
+
+"Choose where to create a new workspace folder." = "选择新工作区文件夹的创建位置。";
+"Export Workspace Package…" = "导出工作区包…";
+"Exports registered scripts and their current parameter values. Review script contents and parameter values before sharing." = "将导出已登记的脚本及其当前参数值。分享前请检查脚本内容和参数值。";
+"Import" = "导入";
+"Import Workspace Package…" = "导入工作区包…";
+"This workspace package is invalid or uses an unsupported version." = "此工作区包无效或使用了不支持的版本。";
+"Unable to export the script file for “{0}”." = "无法导出“{0}”的脚本文件。";
+
+"Editable Selection" = "可输入的下拉选择";
+"Choose a preset or enter a custom value. Preset labels appear in the menu; values are passed to the script." = "可选择预设项或输入自定义值。菜单显示选项名称，实际值传递给脚本。";

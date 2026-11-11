@@ -20,6 +20,13 @@ struct LibraryDocument: Codable {
         schema = try values.decodeIfPresent(String.self, forKey: .schema)
     }
 
+    func encoded() throws -> Data {
+        try validate()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        return try encoder.encode(self)
+    }
+
     func validate() throws {
         var paths = Set<String>()
         for folder in folders {
@@ -52,7 +59,7 @@ struct LibraryDocument: Codable {
                 if parameter.passing != .positional && !argumentNames.insert(parameter.argumentName).inserted {
                     throw RunnerError(message: L("{0}: duplicate named argument or flag name.", "\(context)"))
                 }
-                if parameter.kind == .select && parameter.passing != .flag {
+                if (parameter.kind == .select || parameter.kind == .editableSelect) && parameter.passing != .flag {
                     guard !parameter.options.isEmpty else { throw RunnerError(message: L("{0}: select parameters must define options.", "\(context)")) }
                     var values = Set<String>()
                     for option in parameter.options {
@@ -60,7 +67,7 @@ struct LibraryDocument: Codable {
                             throw RunnerError(message: L("{0}: option labels and values must be nonempty, and values must be unique.", "\(context)"))
                         }
                     }
-                    guard parameter.defaultValue.isEmpty || values.contains(parameter.defaultValue) else {
+                    guard parameter.kind == .editableSelect || parameter.defaultValue.isEmpty || values.contains(parameter.defaultValue) else {
                         throw RunnerError(message: L("{0}: default must match an option value.", "\(context)"))
                     }
                 }

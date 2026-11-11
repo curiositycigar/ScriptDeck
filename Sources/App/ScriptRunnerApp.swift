@@ -27,6 +27,7 @@ struct ScriptRunnerApp: App {
             }
         }
         .defaultSize(width: 1120, height: 800)
+        .windowResizability(.contentMinSize)
         .windowToolbarStyle(.unifiedCompact)
         .commands { RunnerCommands(workspaces: workspaces, runner: runner) }
 

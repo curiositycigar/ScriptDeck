@@ -1,6 +1,5 @@
 import SwiftUI
 import AppKit
-import UniformTypeIdentifiers
 
 extension RunnerView {
     func binding(for parameter: ScriptParameter, scriptID: String) -> Binding<String> {
@@ -11,7 +10,17 @@ extension RunnerView {
         panel.allowsMultipleSelection = true
         panel.canChooseDirectories = false
         panel.message = L("Choose local scripts. Files outside the library will be copied into scripts; nothing will be executed.")
-        panel.begin { result in if result == .OK, let id = store.importURLs(panel.urls) { navigation.selectScript(id, in: session) } }
+        panel.begin { result in if result == .OK { importScriptFiles(panel.urls) } }
+    }
+
+    func importScriptFiles(_ urls: [URL]) {
+        guard !urls.isEmpty, let id = store.importURLs(urls) else { return }
+        guard workspaces.selectedID == workspaceInfo.id else {
+            session.selectedID = id
+            return
+        }
+        selectedSidebarFolder = nil
+        navigation.selectScript(id, in: session)
     }
     func suppliedValues(for item: ScriptItem) -> [String: String] {
         var supplied = session.values[item.id] ?? [:]

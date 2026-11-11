@@ -30,6 +30,7 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
             print("导航检查通过。")
             return
         }
+        try runWorkspaceTransferSelfTests(root: root)
         try runCredentialSelfTests(root: root)
         let source = root.appendingPathComponent("上传 ' $(touch should-not-exist).sh")
         try """

@@ -203,7 +203,7 @@ struct ScriptEditor: View {
                         Text(L("Placeholder")).foregroundStyle(.secondary)
                         TextField(L("Placeholder"), text: parameter.placeholder, prompt: Text(L("Optional"))).labelsHidden()
                     }
-                    if parameter.wrappedValue.kind != .select {
+                    if parameter.wrappedValue.kind != .select && parameter.wrappedValue.kind != .editableSelect {
                         GridRow {
                             Text(L("Default Value")).foregroundStyle(.secondary)
                             TextField(L("Default Value"), text: parameter.defaultValue, prompt: Text(L("Optional; do not save passwords"))).labelsHidden()
@@ -214,7 +214,7 @@ struct ScriptEditor: View {
             if parameter.wrappedValue.passing == .flag {
                 Text(L("Passes the argument name when enabled and omits it when disabled; does not pass true or false."))
                     .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
-            } else if parameter.wrappedValue.kind == .select {
+            } else if parameter.wrappedValue.kind == .select || parameter.wrappedValue.kind == .editableSelect {
                 optionFields(parameter)
             }
         }
@@ -222,7 +222,9 @@ struct ScriptEditor: View {
 
     private func optionFields(_ parameter: Binding<ScriptParameter>) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(L("Labels appear in the interface; values are passed to the script."))
+            Text(parameter.wrappedValue.kind == .editableSelect
+                 ? L("Choose a preset or enter a custom value. Preset labels appear in the menu; values are passed to the script.")
+                 : L("Labels appear in the interface; values are passed to the script."))
                 .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
             HStack {
                 Text(L("Display Label")).frame(maxWidth: .infinity, alignment: .leading)
@@ -250,7 +252,7 @@ struct ScriptEditor: View {
                 Button(L("Add Option")) { parameter.wrappedValue.options.append(ParameterOption()) }
                 Spacer()
                 Text(L("Default Value")).font(WorkspaceTypography.body).foregroundStyle(.secondary)
-                TextField(L("Default Value"), text: parameter.defaultValue, prompt: Text(L("Enter an option value, or leave empty")))
+                TextField(L("Default Value"), text: parameter.defaultValue, prompt: Text(parameter.wrappedValue.kind == .editableSelect ? L("Optional") : L("Enter an option value, or leave empty")))
                     .labelsHidden().textFieldStyle(.roundedBorder).accessibilityLabel(L("Default option value"))
             }
         }

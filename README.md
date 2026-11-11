@@ -21,6 +21,10 @@ Download the latest ZIP from [GitHub Releases](https://github.com/curiositycigar
 
 The interface supports **English** and **Simplified Chinese**, following the system by default. Change it in **Settings → General → App Language**, then quit and reopen the app. User-defined names, configuration values, and script output stay in their original language. This README is available in English and Simplified Chinese; other project documentation is in English.
 
+## Sharing a workspace
+
+Choose **File → Export Workspace Package…** to create a `.scriptdeck` file. It contains registered script files, their parameter definitions, and the values currently entered in the run form as defaults. The recipient drags the package into the main window or chooses **File → Import Workspace Package…**, then picks a location for a new workspace folder. Review your scripts and parameter values before sharing. The package excludes Keychain credentials, logs, schedules, parameter history, and files referenced only as inputs. Paths outside the workspace must be selected again, and the recipient needs any required runtimes and dependencies.
+
 ## Features
 
 - Independent workspaces with nested folders, search, script import, and configuration editing. A compact navigation rail provides workspace switching and direct access to schedules and settings. Use **⌘F** to focus script search and **⌘N** to create a script.
@@ -69,6 +73,8 @@ MyScripts/
   }]
 }
 ```
+
+Use **Editable Selection** in the parameter editor (JSON: `"type": "editableSelect"`) to choose a preset or type a custom value. Define `options` as for `select`; preset labels appear in the menu and their values are passed to the script. Typed values and custom defaults are accepted unchanged. This also works in scheduled task parameters. The existing `select` type continues to accept only predefined values.
 
 `file` and `cwd` resolve relative to the workspace; omitted `cwd` uses the script's folder. Supported interpreters include Bash, Zsh, Python, Node.js, `direct` (shebang), and an absolute executable path. Arguments are passed separately, in configuration order. See the [schema](Resources/library.schema.json) and [script authoring guide](ExampleLibrary/AI-INSTRUCTIONS.md) for all fields and parameter styles.
 

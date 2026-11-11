@@ -1,7 +1,64 @@
 import AppKit
+import UniformTypeIdentifiers
 
 @MainActor
 enum WorkspaceDialogs {
+    private static let packageType = UTType(filenameExtension: WorkspaceTransfer.fileExtension) ?? .data
+
+    static func export(_ workspace: Workspace, from workspaces: WorkspaceStore) {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [packageType]
+        panel.nameFieldStringValue = workspace.name.replacingOccurrences(of: "/", with: "-") + "." + WorkspaceTransfer.fileExtension
+        panel.message = L("Exports registered scripts and their current parameter values. Review script contents and parameter values before sharing.")
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            do {
+                let package = try WorkspaceTransfer(store: workspaces.library(for: workspace),
+                                                    values: workspaces.session(for: workspace).values)
+                try package.write(to: url)
+            } catch { workspaces.error = error.localizedDescription }
+        }
+    }
+
+    static func importPackage(to workspaces: WorkspaceStore) {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [packageType]
+        panel.prompt = L("Import")
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            importPackage(at: url, to: workspaces)
+        }
+    }
+
+    @discardableResult
+    static func importDroppedPackage(_ urls: [URL], to workspaces: WorkspaceStore) -> Bool {
+        guard let url = urls.first(where: WorkspaceTransfer.isPackageURL) else { return false }
+        importPackage(at: url, to: workspaces)
+        return true
+    }
+
+    private static func importPackage(at url: URL, to workspaces: WorkspaceStore) {
+        do {
+            try workspaces.checkRegistry()
+            let package = try WorkspaceTransfer.read(from: url)
+            let destination = NSOpenPanel()
+            destination.canChooseFiles = false
+            destination.canChooseDirectories = true
+            destination.canCreateDirectories = true
+            destination.directoryURL = url.deletingLastPathComponent()
+            destination.message = L("Choose where to create a new workspace folder.")
+            destination.prompt = L("Import")
+            destination.begin { response in
+                guard response == .OK, let parent = destination.url else { return }
+                do {
+                    try workspaces.checkRegistry()
+                    let folder = try package.install(in: parent, named: url.deletingPathExtension().lastPathComponent)
+                    try workspaces.register(folder)
+                } catch { workspaces.error = error.localizedDescription }
+            }
+        } catch { workspaces.error = error.localizedDescription }
+    }
+
     static func add(to workspaces: WorkspaceStore) {
         do { try workspaces.checkRegistry() }
         catch { workspaces.error = error.localizedDescription; return }

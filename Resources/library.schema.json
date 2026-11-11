@@ -77,7 +77,8 @@
             "text",
             "file",
             "folder",
-            "select"
+            "select",
+            "editableSelect"
           ],
           "default": "text"
         },
@@ -123,7 +124,7 @@
           "if": {
             "properties": {
               "type": {
-                "const": "select"
+                "enum": ["select", "editableSelect"]
               }
             },
             "required": [

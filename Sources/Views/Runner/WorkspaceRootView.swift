@@ -1,5 +1,6 @@
 import SwiftUI
 import AppKit
+import UniformTypeIdentifiers
 
 struct WorkspaceRootView: View {
     @ObservedObject var workspaces: WorkspaceStore
@@ -16,7 +17,11 @@ struct WorkspaceRootView: View {
         } output: {
             TaskOutputView(runner: runner, workspaces: workspaces, outputExpanded: $outputExpanded)
         }
-        .frame(minWidth: preferences.sidebarVisible ? 800 : 680, minHeight: 540)
+        .frame(minWidth: preferences.sidebarVisible ? 800 : 680)
+        .contentShape(Rectangle())
+        .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
+            loadDroppedFileURLs(providers) { WorkspaceDialogs.importDroppedPackage($0, to: workspaces) }
+        }
         .workspaceTypography()
         .onChange(of: runner.launchRevision) { _ in outputExpanded = true }
         .onAppear { presentWorkspaceError() }
@@ -64,12 +69,18 @@ struct WorkspaceRootView: View {
         } else {
             HSplitView {
                 if navigation.destination == .scripts {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text(L("WORKSPACES")).font(WorkspaceTypography.sectionLabel).foregroundStyle(.secondary)
-                        Button(L("Add Workspace…")) { WorkspaceDialogs.add(to: workspaces) }
-                        Spacer()
-                    }.padding(14)
-                    .frame(minWidth: 220, idealWidth: 250, maxWidth: 330, maxHeight: .infinity)
+                        Button { WorkspaceDialogs.add(to: workspaces) } label: {
+                            Label(L("Add Workspace…"), systemImage: "plus")
+                                .font(WorkspaceTypography.body)
+                                .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(WorkspaceNavigationButtonStyle(selected: false))
+                    }
+                    .padding(14)
+                    .frame(minWidth: 220, idealWidth: 250, maxWidth: 330, maxHeight: .infinity, alignment: .topLeading)
                     .background(WorkspaceStyle.sidebar)
                 }
                 ZStack {

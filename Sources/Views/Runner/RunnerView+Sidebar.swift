@@ -76,17 +76,15 @@ extension RunnerView {
             .padding(.horizontal, 16).padding(.vertical, 10)
         }
         .frame(maxHeight: .infinity)
+        .contentShape(Rectangle())
         .background { if dropTarget { Color.accentColor.opacity(0.12) } }
         .workspaceAnimation(value: dropTarget)
         .onDrop(of: [UTType.fileURL], isTargeted: $dropTarget) { providers in
-            guard store.directoryURL != nil, store.configurationIssue == nil else { return false }
-            for provider in providers {
-                _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    guard let url else { return }
-                    DispatchQueue.main.async { if let id = store.importURLs([url]) { navigation.selectScript(id, in: session) } }
-                }
+            loadDroppedFileURLs(providers) { urls in
+                guard !WorkspaceDialogs.importDroppedPackage(urls, to: workspaces),
+                      store.directoryURL != nil, store.configurationIssue == nil else { return }
+                importScriptFiles(urls)
             }
-            return true
         }
     }
 
