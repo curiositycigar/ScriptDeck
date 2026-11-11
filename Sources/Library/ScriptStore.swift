@@ -65,11 +65,8 @@ final class ScriptStore: ObservableObject {
         }
         try FileManager.default.createDirectory(at: directory.appendingPathComponent("scripts"), withIntermediateDirectories: true)
         let data = try LibraryDocument().encoded()
+        try WorkspaceGuidance.install(in: directory)
         try data.write(to: configuration, options: .withoutOverwriting)
-        if let schema = Bundle.main.url(forResource: "library.schema", withExtension: "json") {
-            let target = directory.appendingPathComponent("library.schema.json")
-            if !FileManager.default.fileExists(atPath: target.path) { try? FileManager.default.copyItem(at: schema, to: target) }
-        }
         try open(directory, remember: remember)
     }
 

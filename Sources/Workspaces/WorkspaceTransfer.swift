@@ -78,7 +78,7 @@ struct WorkspaceTransfer: Codable {
         defer { try? manager.removeItem(at: staging) }
 
         var document = library
-        document.schema = nil
+        document.schema = "library.schema.json"
         try document.encoded().write(to: staging.appendingPathComponent("library.json"), options: .withoutOverwriting)
         for file in files {
             let url = staging.appendingPathComponent(file.path)
@@ -92,6 +92,8 @@ struct WorkspaceTransfer: Codable {
             try manager.createDirectory(at: staging.appendingPathComponent(script.workingDirectory),
                                         withIntermediateDirectories: true)
         }
+
+        try WorkspaceGuidance.install(in: staging)
 
         var destination = parent.appendingPathComponent(name, isDirectory: true)
         var suffix = 2

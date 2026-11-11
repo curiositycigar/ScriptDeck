@@ -27,4 +27,14 @@ The app automatically saves execution output under `logs/<script filename>/` bes
 
 Never commit real server addresses, account names, deployment directories, passwords, tokens, or private keys in shared scripts or library configuration. Keep private scripts outside the public example library and keep host details in `~/.ssh/config`. Use SSH keys or the SSH agent for authentication.
 
-`.env`, `.env.*`, and `.private/` are ignored by Git and excluded from release packages. Keep actual credentials outside the project even when these exclusions exist. Script output can still disclose private information in local run logs.
+When using version control or sharing a workspace, exclude `.env`, `.env.*`, `.private/`, and `logs/`. ScriptDeck workspace exports include registered scripts, not arbitrary private files. Keep actual credentials outside the project even when these exclusions exist. Script output can still disclose private information in local run logs.
+
+## Native interactive panels
+
+Set `"interactiveUI": true` for manually run scripts that use the bundled `SCRIPTDECK_UI` executable with `--ui`. Send a complete `blocks` JSON document on stdin and read the callback JSON on stdout. Supported block types are `text`, `list`, `buttons`, `input`, `file`, `select`, `toggle`, and `progress`. Optional block `region` fixes content in `header` or `footer`; unmarked blocks belong to the remaining scrollable `body`. Use text `style` for hierarchy, list item `detail` for metadata, and button `style`, `disabled`, and `requiresSelection` for action states. Inputs submit string arrays in `values` when a button is clicked. File controls select local paths; scripts provide remote lists. Progress-only views return immediately. Terminal hidden input can use the app's automatic manual/Keychain dialog without script changes. Keep ordinary diagnostic output separate and never print password values. See [Interactive UI protocol](InteractiveUI.md) for the complete protocol and Shell/Python examples. Interactive UI scripts cannot be scheduled.
+
+## Terminal passwords and saved credentials
+
+Interactive UI scripts can keep their existing terminal password prompts. The app detects disabled terminal echo and offers a native dialog with manual masked input or saved Keychain credentials; no additional protocol blocks, credential IDs, or script changes are needed. Users explicitly choose Send and whether to append Return. After cancellation, the pinned notice can reopen the dialog. The same selected execution must still be running with echo disabled when input is delivered.
+
+Save and associate credentials through the app, never through workspace JSON or script defaults. Do not replace ordinary terminal authentication with a `secure` form field merely to obtain credential filling: form inputs return in JSON, while terminal hidden input goes directly to the PTY. See [Terminal hidden input and saved credentials](InteractiveUI.md#terminal-hidden-input-and-saved-credentials) for setup, trigger conditions, and limitations.

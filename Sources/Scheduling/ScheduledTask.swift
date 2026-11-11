@@ -64,6 +64,9 @@ struct ScheduledTask: Codable, Identifiable {
         }
     }
     func validate(now: Date = Date(), requireFuture: Bool = true) throws {
+        guard !item.interactiveUI else {
+            throw RunnerError(message: L("Interactive UI scripts must run manually and cannot be scheduled."))
+        }
         guard UUID(uuidString: id) != nil, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               (1...7).contains(weekday), (1...525600).contains(intervalMinutes),
               TimeZone(identifier: timeZoneID) != nil else {

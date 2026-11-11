@@ -49,6 +49,14 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         if pendingHistoryWrites == 0 { DispatchQueue.main.async { completion() } }
         else { historyWaiters.append(completion) }
     }
+    /// ECHO-off is a hint for hidden input, not a claim that the process needs a password.
+    var needsHiddenInputNotice: Bool {
+        interactiveChannel != nil && isRunning && !stopping && terminalView.acceptsInput
+            && terminalView.isInputEchoDisabled
+    }
+
+    @Published var showingTerminalLog = false
+    @Published private(set) var interactiveChannel: InteractiveChannel?
     private var stopRequested = false
     private(set) var scheduledTaskID: String?
     private var scheduleRoot: URL?
@@ -121,6 +129,8 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         guard let executable = Bundle.main.executableURL?.path else {
             throw RunnerError(message: L("Unable to find the app's script execution entry point."))
         }
+        let channel = item.interactiveUI ? try InteractiveChannel() : nil
+        defer { if recordID == nil { channel?.finish() } }
         let runID = UUID().uuidString
         let startDate = Date()
         let writer: RunLogWriter
@@ -133,6 +143,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
                 }
             }
         } catch { throw RunnerError(message: L("Unable to create the execution log. The task was not started: {0}", "\(error.localizedDescription)")) }
+        interactiveChannel = channel
         logWriter = writer
         recordID = runID
         historyIssue = nil
@@ -173,6 +184,13 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         environment["COLORTERM"] = "truecolor"
         environment["PYTHONUNBUFFERED"] = "1"
         environment.removeValue(forKey: "NO_COLOR")
+        environment.removeValue(forKey: "SCRIPTDECK_UI_SESSION")
+        environment.removeValue(forKey: "SCRIPTDECK_UI")
+        environment["SCRIPTDECK_LANGUAGE"] = L10n.language
+        if let channel {
+            environment["SCRIPTDECK_UI_SESSION"] = channel.directory.path
+            environment["SCRIPTDECK_UI"] = executable
+        }
         view.acceptsInput = true
         view.startProcess(
             executable: executable,
@@ -212,6 +230,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         guard isRunning, process.running, !stopping || force else { return }
         let pid = process.shellPid
         guard pid > 0 else { return }
+        interactiveChannel?.finish()
         stopRequested = true
         stopping = true
         status = force ? L("Force stopping") : L("Stopping")
@@ -249,6 +268,8 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
 
     private func complete(outcome: ExecutionOutcome, exitCode: Int32?) {
         self.outcome = outcome
+        interactiveChannel?.receive()
+        interactiveChannel?.finish()
         if let writer = logWriter {
             pendingHistoryWrites += 1
             let finishingRecordID = writer.id

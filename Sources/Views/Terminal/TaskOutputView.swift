@@ -7,6 +7,7 @@ struct TaskOutputView: View {
     @Binding var outputExpanded: Bool
     @State private var showHistory = false
     @State private var showTaskList = true
+    @StateObject private var hiddenInputPrompt = HiddenInputPromptController()
     @State private var credentialSession: ExecutionSession?
     @StateObject private var history = HistoryViewModel()
     @State private var selectedSavedID: String?
@@ -49,6 +50,14 @@ struct TaskOutputView: View {
         }
         .sheet(isPresented: $showHistory) {
             ExecutionHistoryView(workspaces: workspaces, runner: runner)
+        }
+        .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
+            hiddenInputPrompt.poll(sessions: runner.sessions, selected: selectedRecord?.session,
+                                   canPresent: outputExpanded && !showHistory && credentialSession == nil &&
+                                       NSApp.isActive && NSApp.keyWindow?.attachedSheet == nil)
+        }
+        .sheet(item: $hiddenInputPrompt.session) { session in
+            HiddenInputPrompt(runner: runner, session: session)
         }
         .sheet(item: $credentialSession) { session in
             CredentialManagerView(runner: runner,
@@ -262,7 +271,7 @@ struct TaskOutputView: View {
         if let savedLog {
             savedLogPane(savedLog)
         } else {
-            liveTerminalPane
+            SessionOutputPane(session: runner.selectedSession, onHiddenInput: { hiddenInputPrompt.open(runner.selectedSession) })
         }
     }
 
@@ -302,27 +311,6 @@ struct TaskOutputView: View {
         }
         .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
         .task(id: entry.id) { await history.load(entry) }
-    }
-
-    private var liveTerminalPane: some View {
-        EmbeddedTerminalView(session: runner.selectedSession)
-            .transaction { $0.animation = nil; $0.disablesAnimations = true }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .padding(12)
-            .background(WorkspaceStyle.canvas)
-            .overlay {
-                if !runner.hasOutput && !runner.selectedIsRunning {
-                    VStack(spacing: 6) {
-                        Text(L("Terminal Ready")).font(WorkspaceTypography.bodyStrong)
-                        Text(L("Run a script to view output and type here. Password input usually does not display characters."))
-                            .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
-                    }
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: 480)
-                    .padding(20).allowsHitTesting(false)
-                }
-            }
-            .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var logView: some View {

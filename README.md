@@ -12,6 +12,12 @@ Download the latest ZIP from [GitHub Releases](https://github.com/curiositycigar
 - The app is ad hoc signed and is not notarized by Apple. If macOS blocks it, review it in **System Settings → Privacy & Security** before opening.
 - Install any runtimes your scripts need, such as Python or Node.js.
 
+## Interactive script UI
+
+Scripts can drive a native panel with text, selectable lists, button rows, text/password inputs, local file/directory pickers, dropdowns, toggles, and progress indicators using a small Bot-style JSON protocol. Enable **Interactive UI** in the script editor, then switch between **Interactive UI** and **Terminal Log** in Run Output. Optional header/footer regions keep titles and actions fixed around the scrolling content. Hidden terminal input can open a native dialog for manual entry or saved Keychain credentials without script changes. No separate UI application is needed. The included **Interactive UI Demo** browses and deletes fictional files, and includes a basic-controls form with simulated progress. It does not change real files. See [Interactive script panels](Docs/Workspace/InteractiveUI.md) for the protocol and Shell/Python examples. Interactive UI scripts run manually and cannot be scheduled.
+
+New and imported workspaces automatically receive `AGENTS.md`, `AI-INSTRUCTIONS.md`, `InteractiveUI.md`, and `library.schema.json` from the app. These local references help AI tools author scripts without access to the ScriptDeck source repository. Existing files are preserved.
+
 ## Get started
 
 1. Click **Add Workspace…** (⌘O) and select the included `ExampleLibrary` folder or your own script folder.
@@ -89,6 +95,8 @@ Scheduled task cards use an adaptive grid with equal heights and bottom-aligned 
 The history **Clear** menu can remove filtered results, all loaded history, or records older than 24 hours, seven days, or one calendar month. Age is measured from each run's start time. Age-based cleanup applies across all loaded workspaces regardless of filters; confirmation shows the cutoff and record count. Run Output lists live sessions and saved executions together, newest first. Select a saved execution to read its log after reopening the app. The list footer hides records for the current app session while keeping saved history and logs.
 
 Use the key button beside a script's name to save a password in macOS Keychain and associate it with that script. Settings → Credentials manages saved credentials; names and workspace/script associations stay in local app preferences, outside the script library. A credential can be associated with several scripts. In a running manual session, click the Run Output key button or press **⇧⌘K**, select a credential, and choose **Fill Password**. Associated credentials appear first. The optional Return submits the input immediately. Filling requires the original session to remain selected and running, with terminal input echo disabled (for example, Bash `read -s`); scheduled background runs cannot receive input. Keychain may request system authorization. Filled passwords go directly to the PTY, without the clipboard or command arguments, but a script that prints the password can still expose it in output and logs.
+
+While **Interactive UI** is selected, hidden terminal input can also open a dialog automatically. Choose **Enter manually** or a saved credential, then click **Send**; associated credentials appear first and Return is optional. Cancel does not repeatedly reopen the dialog: use **Enter Hidden Input…** in the notice to retry. Existing terminal password prompts require no script changes. See [Terminal hidden input and saved credentials](Docs/Workspace/InteractiveUI.md#terminal-hidden-input-and-saved-credentials) for the trigger conditions and usage.
 
 Schedule definitions and the standalone helper live in `~/Library/Application Support/ScriptDeck/Schedules/`; LaunchAgent files live in `~/Library/LaunchAgents/com.lucasyou.ScriptDeck.schedule.<ID>.plist`. Moving the app does not invalidate existing schedules. Moving scripts requires updating their schedules.
 

@@ -229,6 +229,11 @@
           "deprecated": true,
           "description": "Deprecated compatibility field. All manual scripts use the embedded interactive terminal; this field no longer affects execution."
         },
+        "interactiveUI": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable the native interactive panel for manual runs. See InteractiveUI.md."
+        },
         "parameters": {
           "type": "array",
           "items": {

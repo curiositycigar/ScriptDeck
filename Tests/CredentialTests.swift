@@ -155,7 +155,12 @@ private final class TestSecretVault: SecretVault, @unchecked Sendable {
     failure = nil
     Task { @MainActor in
         defer { finished = true }
-        do { try await runner.fillPassword("fixture-secret-密码", sessionID: session.id, appendReturn: false) }
+        do {
+            vault.failWrites = false
+            let id = try await store.save(name: "Hidden input fixture", password: "fixture-secret-密码", target: target)
+            try await HiddenInputSubmission.send(credentialID: id, password: "", appendReturn: false,
+                                                 runner: runner, sessionID: session.id, store: store)
+        }
         catch { failure = error }
     }
     pump(until: { finished })
@@ -192,7 +197,10 @@ private final class TestSecretVault: SecretVault, @unchecked Sendable {
     failure = nil
     Task { @MainActor in
         defer { finished = true }
-        do { try await runner.fillPassword("fixture-secret-密码", sessionID: next.id, appendReturn: true) }
+        do {
+            try await HiddenInputSubmission.send(credentialID: "", password: "fixture-secret-密码", appendReturn: true,
+                                                 runner: runner, sessionID: next.id, store: store)
+        }
         catch { failure = error }
     }
     pump(until: { finished })

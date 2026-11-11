@@ -88,6 +88,16 @@
       "parameters" : [
 
       ]
+    },
+    {
+      "description" : "Try basic native controls, file and directory selection, simulated progress, and fictional file management. No network connections or real file changes.",
+      "file" : "scripts/interactive-demo.sh",
+      "group" : "Examples/Interaction",
+      "id" : "native-interactive-demo",
+      "interactiveUI" : true,
+      "interpreter" : "/bin/bash",
+      "name" : "Interactive UI Demo",
+      "parameters" : []
     }
   ],
   "version" : 1

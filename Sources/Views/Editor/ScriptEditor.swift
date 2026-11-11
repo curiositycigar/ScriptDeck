@@ -52,6 +52,11 @@ struct ScriptEditor: View {
                             TextField(L("Working Directory"), text: $item.workingDirectory, prompt: Text(L("Leave empty to use the script's folder")))
                             Button(L("Choose…")) { choosePath(directory: true) { item.workingDirectory = $0 } }
                         }
+                        Toggle(L("Interactive UI"), isOn: $item.interactiveUI)
+                        if item.interactiveUI {
+                            Text(L("Scripts control a native panel using JSON. Interactive UI requires a manual run."))
+                                .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
+                        }
                     } header: { Text(L("Execution")) } footer: { Text(L("Relative paths are resolved against the current workspace.")) }
                 } else {
                     Section {

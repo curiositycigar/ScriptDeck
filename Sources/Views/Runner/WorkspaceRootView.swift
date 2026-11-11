@@ -118,8 +118,8 @@ struct WorkspaceOutputLayout<Workspace: View, Output: View>: View {
             workspace
                 .frame(minHeight: 280, idealHeight: 460)
             output
-                .frame(minHeight: expanded ? 140 : 46,
-                       idealHeight: expanded ? 240 : 46,
+                .frame(minHeight: expanded ? 350 : 46,
+                       idealHeight: expanded ? 350 : 46,
                        maxHeight: expanded ? .infinity : 46)
         }
     }

@@ -10,6 +10,7 @@ struct ScriptItem: Codable, Identifiable, Equatable {
     var notes = ""
     var execution: ExecutionMode = .embedded
     var parameters: [ScriptParameter] = []
+    var interactiveUI = false
 
     static func importing(_ url: URL) -> ScriptItem {
         var item = ScriptItem()
@@ -27,7 +28,7 @@ struct ScriptItem: Codable, Identifiable, Equatable {
 
 extension ScriptItem {
     enum CodingKeys: String, CodingKey {
-        case id, name, group, file, interpreter, cwd, description, execution, parameters
+        case id, name, group, file, interpreter, cwd, description, execution, parameters, interactiveUI
         case oldCategory = "category", oldPath = "path", oldDirectory = "workingDirectory", oldNotes = "notes"
     }
     init(from decoder: Decoder) throws {
@@ -40,6 +41,7 @@ extension ScriptItem {
         workingDirectory = try c.decodeIfPresent(String.self, forKey: .cwd) ?? c.decodeIfPresent(String.self, forKey: .oldDirectory) ?? ""
         notes = try c.decodeIfPresent(String.self, forKey: .description) ?? c.decodeIfPresent(String.self, forKey: .oldNotes) ?? ""
         execution = try c.decodeIfPresent(ExecutionMode.self, forKey: .execution) ?? .embedded
+        interactiveUI = try c.decodeIfPresent(Bool.self, forKey: .interactiveUI) ?? false
         parameters = try c.decodeIfPresent([ScriptParameter].self, forKey: .parameters) ?? []
     }
     func encode(to encoder: Encoder) throws {
@@ -51,6 +53,7 @@ extension ScriptItem {
         try c.encode(interpreter, forKey: .interpreter)
         if !workingDirectory.isEmpty { try c.encode(workingDirectory, forKey: .cwd) }
         if !notes.isEmpty { try c.encode(notes, forKey: .description) }
+        if interactiveUI { try c.encode(true, forKey: .interactiveUI) }
         try c.encode(parameters, forKey: .parameters)
     }
 }

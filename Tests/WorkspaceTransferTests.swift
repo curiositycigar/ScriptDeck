@@ -5,6 +5,13 @@ import Foundation
     let source = root.appendingPathComponent("share-source")
     let store = ScriptStore(restoreLastDirectory: false)
     try store.initialize(source, remember: false)
+    try checkWorkspaceGuidance(in: source)
+    let customInstructions = source.appendingPathComponent("AGENTS.md")
+    try "Owner instructions\n".write(to: customInstructions, atomically: true, encoding: .utf8)
+    try WorkspaceGuidance.install(in: source)
+    let preservedInstructions = try String(contentsOf: customInstructions, encoding: .utf8)
+    check(preservedInstructions == "Owner instructions\n",
+          "Installing guidance preserves existing workspace instructions")
     let scriptFile = source.appendingPathComponent("scripts/test script.sh")
     let contents = Data("#!/bin/bash\nexit 0\n".utf8)
     try contents.write(to: scriptFile)
@@ -24,6 +31,7 @@ import Foundation
     try package.write(to: packageURL)
     let received = try WorkspaceTransfer.read(from: packageURL)
     let destination = try received.install(in: root, named: "Shared")
+    try checkWorkspaceGuidance(in: destination)
     let second = try received.install(in: root, named: "Shared")
     check(second.lastPathComponent == "Shared 2", "Import creates a new folder when the name is already taken")
     let imported = ScriptStore(restoreLastDirectory: false)
@@ -58,4 +66,24 @@ import Foundation
     check(WorkspaceDialogs.importDroppedPackage([scriptFile, packageURL], to: workspaces)
           && workspaces.error != nil && workspaces.items.isEmpty,
           "A dropped workspace package is validated even when mixed with ordinary files")
+}
+
+private func checkWorkspaceGuidance(in directory: URL) throws {
+    guard let guides = Bundle.module.url(forResource: "Workspace", withExtension: nil),
+          let enumerator = FileManager.default.enumerator(at: guides, includingPropertiesForKeys: [.isRegularFileKey]) else {
+        fatalError("Missing bundled workspace guidance")
+    }
+    for case let resource as URL in enumerator {
+        guard try resource.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true else { continue }
+        let relative = String(resource.path.dropFirst(guides.path.count + 1))
+        let installed = try Data(contentsOf: directory.appendingPathComponent(relative))
+        let bundled = try Data(contentsOf: resource)
+        check(installed == bundled, "New workspaces receive bundled guidance: \(relative)")
+    }
+    let schema = try Data(contentsOf: directory.appendingPathComponent("library.schema.json"))
+    let bundledSchema = try Data(contentsOf: Bundle.module.url(forResource: "library.schema", withExtension: "json")!)
+    check(schema == bundledSchema, "New workspaces receive the bundled library schema")
+    let instructions = try String(contentsOf: directory.appendingPathComponent("AGENTS.md"), encoding: .utf8)
+    check(instructions.contains("AI-INSTRUCTIONS.md") && instructions.contains("InteractiveUI.md"),
+          "Workspace AI instructions link to locally available development guides")
 }

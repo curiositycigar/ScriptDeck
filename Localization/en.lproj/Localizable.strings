@@ -515,3 +515,43 @@
 
 "Editable Selection" = "Editable Selection";
 "Choose a preset or enter a custom value. Preset labels appear in the menu; values are passed to the script." = "Choose a preset or enter a custom value. Preset labels appear in the menu; values are passed to the script.";
+
+// Interactive script panels
+"Interactive UI" = "Interactive UI";
+"Terminal Log" = "Terminal Log";
+"Output View" = "Output View";
+"Scripts control a native panel using JSON. Interactive UI requires a manual run." = "Scripts control a native panel using JSON. Interactive UI requires a manual run.";
+"Interactive UI scripts must run manually and cannot be scheduled." = "Interactive UI scripts must run manually and cannot be scheduled.";
+"Waiting for the script interface…" = "Waiting for the script interface…";
+"Waiting for the script…" = "Waiting for the script…";
+"This session has ended. Interface controls are disabled." = "This session has ended. Interface controls are disabled.";
+"Invalid interactive UI JSON. Check block types, IDs, items, and size limits." = "Invalid interactive UI JSON. Check block types, IDs, items, and size limits.";
+"The interactive UI session is unavailable or has ended." = "The interactive UI session is unavailable or has ended.";
+"Only one interactive UI request may be active at a time." = "Only one interactive UI request may be active at a time.";
+"Interactive UI error: {0}" = "Interactive UI error: {0}";
+
+"Workspace development guidance is missing from the app resources." = "Workspace development guidance is missing from the app resources.";
+"No items to display" = "No items to display";
+"{0} items · {1} selected" = "{0} items · {1} selected";
+
+"The terminal may be waiting for a password or other hidden input. Switch to Terminal Log to continue." = "The terminal may be waiting for a password or other hidden input. Switch to Terminal Log to continue.";
+
+"Text input" = "Text input";
+
+"Select an option" = "Select an option";
+
+"Nothing selected" = "Nothing selected";
+
+"Choose" = "Choose";
+
+"Terminal Hidden Input" = "Terminal Hidden Input";
+
+"The script may be waiting for a password or other hidden input." = "The script may be waiting for a password or other hidden input.";
+
+"Input source" = "Input source";
+
+"Enter manually" = "Enter manually";
+
+"Send" = "Send";
+
+"Enter Hidden Input…" = "Enter Hidden Input…";

@@ -19,6 +19,9 @@ cp "$ROOT/.build/release/ScriptDeck" "$APP/Contents/MacOS/ScriptDeck"
 
 rm -rf "$APP/Contents/Resources/ScriptDeck_ScriptDeck.bundle"
 ditto "$ROOT/.build/release/ScriptDeck_ScriptDeck.bundle" "$APP/Contents/Resources/ScriptDeck_ScriptDeck.bundle"
+# Ensure every workspace-facing guide and the schema actually ship in the app.
+diff -rq "$ROOT/Docs/Workspace" "$APP/Contents/Resources/ScriptDeck_ScriptDeck.bundle/Workspace"
+cmp "$ROOT/Resources/library.schema.json" "$APP/Contents/Resources/ScriptDeck_ScriptDeck.bundle/library.schema.json"
 
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 

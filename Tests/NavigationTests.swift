@@ -182,7 +182,8 @@ import UniformTypeIdentifiers
     let scroll = descendants(pane).compactMap { $0 as? NSScrollView }
         .first { abs($0.bounds.width - pane.bounds.width) < 1 }!
     let tallViewport = scroll.bounds.height
-    window.setContentSize(NSSize(width: 850, height: 460))
+    // Respect the workspace (280) and expanded output (350) minimum heights.
+    window.setContentSize(NSSize(width: 850, height: 650))
     layout()
     let viewport = scroll.convert(scroll.bounds, to: pane)
     check(viewport.height < tallViewport && (scroll.documentView?.frame.height ?? 0) > viewport.height,
@@ -308,7 +309,7 @@ import UniformTypeIdentifiers
         check(form.window === window && form.contentView.bounds.origin == offset,
               "Output toggle retains the parameter form and scroll position")
         let outputHeight = split.subviews[1].frame.height
-        check(expanded ? outputHeight >= 139 : outputHeight <= 47,
+        check(expanded ? outputHeight >= 349 : outputHeight <= 47,
               "Output toggle applies the expanded or collapsed pane height (expanded: \(expanded), height: \(outputHeight))")
     }
 }

@@ -11,6 +11,7 @@ ditto "$ROOT/dist/ScriptDeck.app" "$RELEASE/ScriptDeck.app"
 # Exclude local history before copying; never read or bundle its contents.
 mkdir -p "$RELEASE/ExampleLibrary"
 /usr/bin/rsync -a --exclude='logs/' --exclude='.DS_Store' --exclude='.env' --exclude='.env.*' --exclude='.private/' "$ROOT/ExampleLibrary/" "$RELEASE/ExampleLibrary/"
+ditto "$ROOT/Docs/Workspace" "$RELEASE/ExampleLibrary"
 cp "$ROOT/Resources/library.schema.json" "$RELEASE/ExampleLibrary/library.schema.json"
 cp "$ROOT/README.md" "$RELEASE/README.md"
 cp "$ROOT/README.zh-CN.md" "$RELEASE/README.zh-CN.md"

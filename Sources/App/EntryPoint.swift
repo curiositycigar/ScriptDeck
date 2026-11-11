@@ -4,6 +4,13 @@ import Darwin
 @main
 enum EntryPoint {
     @MainActor static func main() {
+        if CommandLine.arguments.dropFirst().first == "--ui" {
+            guard CommandLine.arguments.count == 2 || (CommandLine.arguments.count == 3 && CommandLine.arguments[2] == "--action-only") else {
+                FileHandle.standardError.write(Data("Usage: ScriptDeck --ui [--action-only] < view.json\n".utf8))
+                exit(2)
+            }
+            exit(InteractiveClient.run(actionOnly: CommandLine.arguments.contains("--action-only")))
+        }
         if CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--run-schedule" {
             do { try ScheduleExecutor.run(definitionURL: URL(fileURLWithPath: CommandLine.arguments[2])) }
             catch {

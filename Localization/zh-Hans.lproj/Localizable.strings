@@ -515,3 +515,43 @@
 
 "Editable Selection" = "可输入的下拉选择";
 "Choose a preset or enter a custom value. Preset labels appear in the menu; values are passed to the script." = "可选择预设项或输入自定义值。菜单显示选项名称，实际值传递给脚本。";
+
+// Interactive script panels
+"Interactive UI" = "交互界面";
+"Terminal Log" = "终端日志";
+"Output View" = "输出视图";
+"Scripts control a native panel using JSON. Interactive UI requires a manual run." = "脚本通过 JSON 控制原生面板。交互界面需要手动运行。";
+"Interactive UI scripts must run manually and cannot be scheduled." = "交互界面脚本必须手动运行，不能创建计划任务。";
+"Waiting for the script interface…" = "等待脚本界面…";
+"Waiting for the script…" = "等待脚本响应…";
+"This session has ended. Interface controls are disabled." = "此会话已结束，界面控件已禁用。";
+"Invalid interactive UI JSON. Check block types, IDs, items, and size limits." = "交互界面 JSON 无效，请检查块类型、标识、条目和大小限制。";
+"The interactive UI session is unavailable or has ended." = "交互界面会话不可用或已结束。";
+"Only one interactive UI request may be active at a time." = "同一时间只能有一个交互界面请求。";
+"Interactive UI error: {0}" = "交互界面错误：{0}";
+
+"Workspace development guidance is missing from the app resources." = "App 资源中缺少 workspace 开发指导文档。";
+"No items to display" = "暂无内容";
+"{0} items · {1} selected" = "共 {0} 项 · 已选 {1} 项";
+
+"The terminal may be waiting for a password or other hidden input. Switch to Terminal Log to continue." = "终端可能正在等待密码或其他隐藏输入，请切换到“终端日志”继续操作。";
+
+"Text input" = "文本输入";
+
+"Select an option" = "选择选项";
+
+"Nothing selected" = "尚未选择";
+
+"Choose" = "选择";
+
+"Terminal Hidden Input" = "终端隐藏输入";
+
+"The script may be waiting for a password or other hidden input." = "脚本可能正在等待密码或其它隐藏输入。";
+
+"Input source" = "输入来源";
+
+"Enter manually" = "手动输入";
+
+"Send" = "发送";
+
+"Enter Hidden Input…" = "输入隐藏内容…";

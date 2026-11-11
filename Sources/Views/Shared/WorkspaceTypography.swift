@@ -25,6 +25,14 @@ enum WorkspaceTypography {
     static func terminal(size: CGFloat) -> Font { .system(size: size, design: .monospaced) }
 }
 
+/// Compact spacing shared by interactive content, actions, and its tab strip.
+enum InteractivePanelMetrics {
+    static let inset: CGFloat = 12
+    static let blockSpacing: CGFloat = 8
+    static let actionSpacing: CGFloat = 6
+    static let rowHeight: CGFloat = 26
+}
+
 enum WorkspaceIconSize: CGFloat {
     case disclosure = 10
     case inline = 13
