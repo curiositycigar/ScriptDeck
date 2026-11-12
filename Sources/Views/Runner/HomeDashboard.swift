@@ -22,7 +22,6 @@ struct HomeDashboard: View {
         let upcoming = self.upcoming
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
-                Text(L("Home")).font(WorkspaceTypography.pageTitle)
                 VStack(alignment: .leading, spacing: 14) {
                     sectionHeader(L("Favorite Scripts"), action: L("Browse Scripts"), perform: openWorkspaces)
                     if preferences.favorites.isEmpty {
