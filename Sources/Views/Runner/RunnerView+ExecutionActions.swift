@@ -31,6 +31,12 @@ extension RunnerView {
         return supplied
     }
     func execute(_ item: ScriptItem) {
+        schedules.refresh(registerSystem: false)
+        if !item.allowsMultipleInstances,
+           let current = runner.activeSessions(workspaceID: workspaceInfo.id, scriptID: item.id).first {
+            runner.showExecution(current)
+            return
+        }
         validatedScripts.insert(item.id)
         let supplied = suppliedValues(for: item)
         let issues = parameterIssues(for: item, values: supplied)
@@ -41,8 +47,9 @@ extension RunnerView {
         do {
             let arguments = try scriptArguments(for: item, values: supplied)
             let resolved = store.resolved(item)
-            outputExpanded = true
-            try runner.run(item: resolved, arguments: arguments, workspaceID: workspaceInfo.id, workspaceName: workspaceInfo.name)
+            let execution = try runner.run(item: resolved, arguments: arguments, workspaceID: workspaceInfo.id, workspaceName: workspaceInfo.name,
+                                           workspaceDirectory: workspaceInfo.directory)
+            runner.showExecution(execution)
             parameterHistory.remember(workspaceID: workspaceInfo.id, item: item, supplied: supplied)
         } catch { self.error = error.localizedDescription }
     }

@@ -2,7 +2,7 @@
 
 Enable **Interactive UI** in the script editor, or set `"interactiveUI": true` in its library entry. No additional UI app, web server, or language SDK is required. Script runtimes and business dependencies still need to be installed normally.
 
-Each manual run has **Interactive UI** and **Terminal Log** tabs in Run Output. The UI tab opens by default. Tab selection is retained per execution. Standard output/error continue to use the existing terminal and persisted logs; protocol payloads and selections are not added to logs. Scripts can explicitly print operation results for history. Background schedules reject interactive UI scripts.
+Each manual run has **Interactive UI** and **Terminal Log** tabs in its execution window. The UI tab opens by default. Tab selection is retained per execution. Standard output/error continue to use the existing terminal and persisted logs; protocol payloads and selections are not added to logs. Scripts can explicitly print operation results for history. Background schedules reject interactive UI scripts.
 
 ## Terminal hidden input and saved credentials
 
@@ -35,7 +35,7 @@ The environment provides:
 - `SCRIPTDECK_UI_SESSION`: the private mailbox for this execution. Treat this as opaque.
 - `SCRIPTDECK_LANGUAGE`: the app language (`en` or `zh-Hans`), available for script-owned labels.
 
-Invoke `"$SCRIPTDECK_UI" --ui`, write one JSON view to its standard input, and close that input. The helper renders the view, waits for a button click, then writes one JSON event to standard output and exits successfully. Without buttons, it returns immediately after the app accepts the view, with no output. This supports progress/status updates before slow operations. Each exchange replaces the entire panel and resets form values, selections, and scrolling. Only one helper exchange may be active per execution; a concurrent call fails rather than sharing events.
+Invoke `"$SCRIPTDECK_UI" --ui`, write one JSON view to its standard input, and close that input. The helper renders the view, waits for a button click, then writes one JSON event to standard output and exits successfully. Without buttons, it returns immediately after the app accepts the view, with no output. This supports progress/status updates before slow operations. Each exchange supplies the complete panel content. Without `pageID`, form values and list selections reset; compatible file controls retain paths across consecutive views. With a nonempty `pageID`, compatible controls on consecutive views of the same page retain state unless explicitly assigned or reset. Changing or removing the page ID starts fresh. Stable block and button IDs allow in-place view reuse; omitted IDs fall back to array positions. Only one helper exchange may be active per execution; a concurrent call fails rather than sharing events.
 
 The helper uses an isolated directory with mode 0700, atomic JSON files and a 100 ms app polling interval. The script does not implement this transport. Stop or process completion removes the mailbox, disables the final panel, and causes waiting helpers to fail. Closing the app window retains the existing app/session lifecycle. Historical logs do not restore interactive panels.
 
@@ -67,7 +67,44 @@ The helper uses an isolated directory with mode 0700, atomic JSON files and a 10
 
 Blocks render vertically within their region in a compact layout with 12 pt horizontal insets, 8 pt block spacing, and small native buttons separated by 6 pt. List rows have a 26 pt minimum height and grow for wrapped labels. A `buttons` block lays out actions horizontally and wraps them onto additional rows as needed; long labels wrap within their button. Add more button blocks for separate action groups. Text and list rows grow to fit wrapped content. Lists expand to fit all their rows, with no internal scroll container or height limit. The body fills the space between optional fixed header/footer regions and scrolls as one surface when its contents exceed the available height. The tab strip and hidden-input notice remain fixed above the panel. For large datasets, use script-controlled Previous/Next buttons to paginate and keep actions easy to reach. All interactive UI scroll indicators are hidden; trackpad and mouse-wheel scrolling remain available. List headers show the item and selection counts. Text is plain, selectable text. There are no HTML, coordinates, arbitrary nesting, or executable callbacks.
 
-`list.id` is required and unique across the view. Item IDs are required and unique within their list. `multiple` defaults to false. All lists start unselected. Clicking an already selected single-selection item clears it. Button labels and callback `data` are required strings. Labels and data are always treated as content, never executed by the app.
+`list.id` is required and unique across the view. Item IDs are required and unique within their list. `multiple` defaults to false. Lists start unselected on a new page; same-page retention is described below. Clicking an already selected single-selection item clears it. Button labels are required strings; callback buttons require `data`, while local assignment buttons require `action`. Labels and data are always treated as content, never executed by the app.
+
+## Page identity and retained state
+
+Optional top-level `pageID` identifies one logical page; it must be nonempty when supplied. Every message still includes the complete `blocks` array. A request UUID identifies one exchange and rejects stale callbacks; `pageID` instead scopes component state and view reuse. It does not cache pages: leaving and returning starts fresh.
+
+On consecutive views with the same explicit `pageID`:
+
+- Input, select, and toggle values persist by control ID when their type remains compatible. Explicit `value` (including an empty string) or `checked` overrides retained state.
+- Password inputs never retain edits across views. An explicit `value` initializes the new password field.
+- File choices persist only when ID, mode, and multiplicity match. Lists preserve only selected IDs still present, with the same multiplicity. Invalid retained select values fall back to the first current option.
+- `reset: true` on an input, file, list, select, or toggle discards previous state before applying explicit defaults. It clears file/list selections. Omitted or false means normal retention rules.
+- Removing a control discards its state. Changing input multiline/secure configuration clears incompatible edits. Changing `pageID`, including adding or removing it, clears state and resets the rendered page.
+
+Without `pageID`, existing initialization behavior remains: form/list state resets on every message, while compatible file choices persist across consecutive views. `reset: true` can also clear a legacy file picker.
+
+All blocks accept an optional nonempty `id`, unique across the entire view. Button items accept optional nonempty IDs unique within their button block. Declare stable IDs for components that should survive insertions or reordering; omitted IDs fall back to their array positions. Same-page updates retain compatible native views and scrolling where content permits. This does not guarantee focus or scroll retention after incompatible structural changes.
+
+## Local field assignments
+
+A button item may use `action` instead of `data` to update a nonsecure input without completing the exchange or calling the script:
+
+```json
+{"pageID":"upload","blocks":[
+  {"type":"input","id":"name","label":"Remote filename"},
+  {"type":"buttons","id":"presets","items":[
+    {"id":"example","text":"example.zip","action":{"type":"setValue","target":"name","value":"example.zip"}}
+  ]},
+  {"type":"buttons","id":"actions","items":[
+    {"id":"upload","text":"Upload","data":"upload"},
+    {"id":"cancel","text":"Cancel","data":"cancel"}
+  ]}
+]}
+```
+
+Each button requires exactly one of `data` or `action`. The only local action is `setValue`, with a `target` matching a nonsecure input in the current view and a string `value`. Local actions obey `disabled`, `requiresSelection`, session lifecycle, and stale-request checks. They do not submit form values, lock controls, show processing feedback, or rebuild the page. The next callback includes the updated value. They cannot select files, fill secure inputs, or execute code. Every button-based view must also contain a callback button so the script can continue or cancel.
+
+These fields require an updated ScriptDeck client. Existing scripts without them continue to use the previous protocol behavior.
 
 ## Optional fixed regions
 
@@ -122,12 +159,12 @@ These optional fields are backward compatible; existing scripts must add them to
 
 ## Form and progress blocks
 
-All input controls use a nonempty `id`, unique across **all** lists, inputs, file pickers, selects, and toggles in the view. `label` is optional plain text. Changes stay in the app until a button is clicked; switching output tabs preserves them. A new view initializes every control from its declared defaults, so scripts must send values again when they want to preserve edits after a refresh. Controls require a button block in the same view to accept user interaction. Without buttons, a view is a status update and returns immediately.
+All input controls use a nonempty `id`, unique across all blocks with IDs in the view. `label` is optional plain text. Changes stay in the app until a callback button is clicked; switching output tabs preserves them. Named pages retain compatible control state as described below. Views without `pageID` initialize text, select, and toggle controls from defaults and reset list selections, while compatible file controls retain selected paths. Controls require a button block in the same view to accept user interaction. Without buttons, a view is a status update and returns immediately.
 
 | Type | Fields | Initial state | Submitted `values[id]` |
 | --- | --- | --- | --- |
 | `input` | `id`, optional `label`, `placeholder`, `value` (string), `multiline` (boolean), `secure` (boolean) | `value` or empty string | One string, including `[""]` when empty |
-| `file` | `id`, optional `label`, `mode` (`file` or `directory`), `multiple` (boolean) | Nothing selected; `mode` defaults to `file` | Absolute local paths; `[]` when empty |
+| `file` | `id`, optional `label`, `mode` (`file` or `directory`), `multiple` (boolean) | Previous selection for the same compatible control, otherwise empty; `mode` defaults to `file` | Absolute local paths; `[]` when empty |
 | `select` | `id`, `items` (`id`/`text`), optional `label`, `value` (item ID) | `value` or first item | One selected item ID |
 | `toggle` | `id`, optional `label`, `checked` (boolean) | `checked` or false | `["true"]` or `["false"]` |
 | `progress` | Optional `label`, `progress` (number from 0 to 1) | Determinate if a number is supplied; otherwise a waiting spinner | No value submitted |
@@ -157,7 +194,7 @@ A click can return:
 {"data":"upload","values":{"destination":["/uploads"],"notes":[""],"secret":[""],"uploads":["/Users/example/report.pdf"],"folder":[],"environment":["test"],"overwrite":["false"]}}
 ```
 
-File selection opens a native macOS chooser; cancellation retains the previous selection and Clear removes it. Selected paths display in full and are submitted in sorted order. `multiple` defaults to false and applies to both file and directory modes. File contents are never loaded or uploaded by the UI. Remote files still use a script-populated `list`. Scripts must handle paths that have changed or disappeared after selection.
+File selection supports a native macOS chooser and dragging local files or folders onto the control. Both methods follow `mode` and `multiple`: incompatible or unavailable paths are ignored, a single-selection control takes the first compatible path, and a multi-selection control takes all compatible paths. A successful drop replaces the previous selection; a rejected drop or chooser cancellation retains it, and Clear removes it. Drops are disabled while processing or after completion. Selected paths display in full and are submitted in sorted order. `multiple` defaults to false and applies to both file and directory modes. File contents are never loaded or uploaded by the UI. Remote files still use a script-populated `list`. Scripts must handle paths that have changed or disappeared after selection.
 
 Single-line and multiline inputs use native expanding fields, without an embedded scrolling editor. `secure` masks a single-line field and cannot be combined with `multiline`. Masking affects display only: the entered string is returned to the script. Do not print callbacks containing passwords or store them in logs. Validation, required fields, and cancellation behavior belong to the script; every button returns all current input values, including Cancel. Select items require nonempty unique IDs and 1–1,000 options; an explicit `value` must match one. Toggles always return strings to preserve the existing string-array event format.
 
@@ -167,19 +204,19 @@ For progress, publish views without buttons between portions of work:
 {"blocks":[{"type":"progress","label":"Uploading…","progress":0.5}]}
 ```
 
-Omit `progress` for an indeterminate spinner. These updates replace the whole panel; they do not create background work or emit input events. The script runs the operation and chooses when to publish the next update.
+Omit `progress` for an indeterminate spinner. These updates describe the complete panel and update it in place; they do not create background work or emit input events. Display-only views do not show an additional waiting indicator. The script runs the operation and chooses when to publish the next update.
 
 Limits: 256 KiB input, 100 blocks, 1,000 items per list or select, and 1–8 buttons per button block. Use script-controlled pagination for larger datasets. Unknown block types, invalid IDs, and invalid JSON fail with a nonzero helper exit status and a diagnostic on stderr.
 
 ## Events and confirmation
 
-A button click returns its opaque `data` plus current control values (list IDs in item order):
+A callback button click returns its opaque `data` plus current control values (list IDs in item order):
 
 ```json
 {"data":"delete","values":{"files":["report"]}}
 ```
 
-All input control IDs appear in `values`, including empty selections. Text and progress blocks do not contribute values. Changes to selection alone do not send events. Controls disable immediately after a click until the script publishes its next view, preventing duplicate submissions. The app rejects callbacks from replaced views.
+All input control IDs appear in `values`, including empty selections. Text and progress blocks do not contribute values. Changes to selection and local field assignments do not send events. Controls disable immediately after a callback click until the script publishes its next view, preventing duplicate submissions. Text remains readable and scrollable. If the next view takes longer than 250 ms, a compact waiting indicator overlays the body without moving content; faster exchanges do not show it. The app rejects callbacks from replaced views.
 
 Confirmation is another view with Confirm and Cancel buttons. The script stores the selected IDs before showing it, checks the chosen action, performs deletion, and publishes a fresh list. Use stable opaque file IDs and verify the target before destructive operations; do not concatenate callbacks into shell commands. Confirmation and business operations belong to the script.
 

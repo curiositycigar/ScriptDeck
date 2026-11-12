@@ -10,7 +10,7 @@ extension RunnerView {
             } else if store.configurationIssue != nil {
                 VStack(spacing: 0) {
                     WorkspaceEmptyState(symbol: "folder.badge.questionmark", title: L("Workspace Unavailable"),
-                                        message: L("Check library.json. If the folder has moved, relocate it in Settings."))
+                                        message: L("Check library.json. If the folder has moved, relocate it in workspace management."))
                     Button(L("Manage Workspaces…"), action: manageWorkspaces)
                 }.frame(maxWidth: .infinity, maxHeight: .infinity).padding(24)
             } else {
@@ -114,25 +114,34 @@ extension RunnerView {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .frame(height: WorkspaceControlMetrics.headerTile)
-            Button { showParameterHistory.toggle() } label: {
-                WorkspaceSymbol("clock.arrow.circlepath", size: .toolbar)
-                    .frame(width: WorkspaceControlMetrics.titleActionTarget, height: WorkspaceControlMetrics.titleActionTarget)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(WorkspaceIconButtonStyle(targetSize: WorkspaceControlMetrics.titleActionTarget)).foregroundStyle(.secondary)
-            .help(L("Recent Parameters")).accessibilityLabel(L("Recent Parameters"))
-            .disabled(item.parameters.isEmpty)
-            .popover(isPresented: $showParameterHistory, arrowEdge: .bottom) {
-                parameterHistoryPicker(item)
-            }
-            Button { openEditor(item) } label: {
-                WorkspaceSymbol("slider.horizontal.3", size: .toolbar)
-                    .frame(width: WorkspaceControlMetrics.titleActionTarget, height: WorkspaceControlMetrics.titleActionTarget)
-                    .contentShape(Rectangle())
-            }
+            HStack(spacing: 4) {
+                Button { preferences.toggleFavorite(workspaceID: workspaceInfo.id, scriptID: item.id) } label: {
+                    WorkspaceSymbol(preferences.isFavorite(workspaceID: workspaceInfo.id, scriptID: item.id) ? "star.fill" : "star", size: .toolbar)
+                        .frame(width: WorkspaceControlMetrics.titleActionTarget, height: WorkspaceControlMetrics.titleActionTarget)
+                }
+                .buttonStyle(WorkspaceIconButtonStyle(targetSize: WorkspaceControlMetrics.titleActionTarget))
+                .help(preferences.isFavorite(workspaceID: workspaceInfo.id, scriptID: item.id) ? L("Remove from Favorites") : L("Add to Favorites"))
+                .accessibilityLabel(preferences.isFavorite(workspaceID: workspaceInfo.id, scriptID: item.id) ? L("Remove from Favorites") : L("Add to Favorites"))
+                Button { showParameterHistory.toggle() } label: {
+                    WorkspaceSymbol("clock.arrow.circlepath", size: .toolbar)
+                        .frame(width: WorkspaceControlMetrics.titleActionTarget, height: WorkspaceControlMetrics.titleActionTarget)
+                        .contentShape(Rectangle())
+                }
                 .buttonStyle(WorkspaceIconButtonStyle(targetSize: WorkspaceControlMetrics.titleActionTarget)).foregroundStyle(.secondary)
-                .help(L("Edit")).accessibilityLabel(L("Edit"))
-                .disabled(isActive(item))
+                .help(L("Recent Parameters")).accessibilityLabel(L("Recent Parameters"))
+                .disabled(item.parameters.isEmpty)
+                .popover(isPresented: $showParameterHistory, arrowEdge: .bottom) {
+                    parameterHistoryPicker(item)
+                }
+                Button { openEditor(item) } label: {
+                    WorkspaceSymbol("slider.horizontal.3", size: .toolbar)
+                        .frame(width: WorkspaceControlMetrics.titleActionTarget, height: WorkspaceControlMetrics.titleActionTarget)
+                        .contentShape(Rectangle())
+                }
+                    .buttonStyle(WorkspaceIconButtonStyle(targetSize: WorkspaceControlMetrics.titleActionTarget)).foregroundStyle(.secondary)
+                    .help(L("Edit")).accessibilityLabel(L("Edit"))
+                    .disabled(isActive(item))
+            }
         }
     }
 
@@ -339,22 +348,37 @@ extension RunnerView {
         }
     }
 
+    @ViewBuilder
     private func executionStatus(_ item: ScriptItem) -> some View {
-        Label(isActive(item) ? L("This script is running") : L("Ready"), systemImage: isActive(item) ? "waveform" : "checkmark.circle")
-            .font(WorkspaceTypography.bodyStrong)
-            .foregroundStyle(isActive(item) ? Color.accentColor : Color.secondary)
-            .fixedSize(horizontal: true, vertical: false)
-            .help(isActive(item) ? L("Switch terminals in the task list below, or run again") : L("⌘ Return to run script"))
+        let count = runner.activeSessions(workspaceID: workspaceInfo.id, scriptID: item.id).count
+        if count > 0 {
+            let button = ScriptInstancesButton(runner: runner, workspaceID: workspaceInfo.id,
+                                               scriptID: item.id, showsStatus: true)
+                .buttonStyle(.plain)
+                .fixedSize(horizontal: true, vertical: false)
+            if item.allowsMultipleInstances {
+                button
+            } else {
+                button.keyboardShortcut(.return, modifiers: .command)
+            }
+        } else {
+            Label(L("Ready"), systemImage: "checkmark.circle")
+                .font(WorkspaceTypography.bodyStrong)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: true, vertical: false)
+        }
     }
 
     private func executionActions(_ item: ScriptItem) -> some View {
-        HStack(alignment: .center, spacing: 8) {
+        let running = isActive(item)
+        return HStack(alignment: .center, spacing: 4) {
             Button {
                 do {
                     let supplied = suppliedValues(for: item)
                     _ = try scriptArguments(for: item, values: supplied)
                     schedulingItem = ScheduledTask(name: item.name, workspaceID: workspaceInfo.id,
-                                                   workspaceName: workspaceInfo.name, item: store.resolved(item), values: supplied)
+                                                   workspaceName: workspaceInfo.name, item: store.resolved(item), values: supplied,
+                                                   workspaceDirectory: workspaceInfo.directory)
                 } catch { self.error = error.localizedDescription }
             } label: { WorkspaceSymbol("clock.badge.plus", size: .toolbar) }
             .buttonStyle(WorkspaceIconButtonStyle())
@@ -362,13 +386,17 @@ extension RunnerView {
             .help(L("Schedule…"))
             .accessibilityLabel(L("Schedule…"))
 
-            Button {
-                execute(item)
-            } label: { WorkspaceSymbol("play.fill", size: .toolbar) }
-            .buttonStyle(WorkspaceIconButtonStyle(prominent: true))
-            .help(L("⌘ Return to run script"))
-            .accessibilityLabel(L("Run"))
-            .keyboardShortcut(.return, modifiers: .command)
+            if !running || item.allowsMultipleInstances {
+                Button {
+                    execute(item)
+                } label: {
+                    WorkspaceSymbol("play.fill", size: .toolbar)
+                }
+                .buttonStyle(WorkspaceIconButtonStyle(prominent: true))
+                .help(running ? L("Run Another Instance") : L("⌘ Return to run script"))
+                .accessibilityLabel(running ? L("Run Another Instance") : L("Run"))
+                .keyboardShortcut(.return, modifiers: .command)
+            }
         }
     }
 }

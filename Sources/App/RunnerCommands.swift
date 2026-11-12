@@ -4,12 +4,10 @@ struct RunnerActions {
     var canImport: Bool
     var sidebarVisible: Bool
     var canToggleSidebar: Bool
-    var outputExpanded: Bool
     var importScripts: () -> Void
     var newScript: () -> Void
     var findScript: () -> Void
     var toggleSidebar: () -> Void
-    var toggleOutput: () -> Void
 }
 
 private struct RunnerActionsKey: FocusedValueKey {
@@ -26,16 +24,17 @@ extension FocusedValues {
 struct RunnerCommands: Commands {
     @ObservedObject var workspaces: WorkspaceStore
     @ObservedObject var runner: ProcessRunner
+    @ObservedObject var navigation: WorkspaceNavigation
     @Environment(\.openWindow) private var openWindow
     @FocusedValue(\.runnerActions) private var actions
 
     var body: some Commands {
         CommandGroup(replacing: .appSettings) {
-            Button(L("Settings…")) { openWindow(id: "settings") }
+            Button(L("Settings…")) { navigation.destination = .settings; openWindow(id: "main") }
                 .keyboardShortcut(",", modifiers: .command)
         }
         CommandGroup(replacing: .newItem) {
-            Button(L("Add Workspace…")) { WorkspaceDialogs.add(to: workspaces) }
+            Button(L("Add Workspace…")) { navigation.destination = .scripts; WorkspaceDialogs.add(to: workspaces) }
                 .keyboardShortcut("o", modifiers: .command)
             Button(L("Import Workspace Package…")) { WorkspaceDialogs.importPackage(to: workspaces) }
             Button(L("Export Workspace Package…")) {
@@ -57,14 +56,14 @@ struct RunnerCommands: Commands {
             Button(actions?.sidebarVisible == true ? L("Hide Sidebar") : L("Show Sidebar")) { actions?.toggleSidebar() }
                 .keyboardShortcut("s", modifiers: [.command, .control])
                 .disabled(actions?.canToggleSidebar != true)
-            Button(actions?.outputExpanded == true ? L("Collapse Output") : L("Expand Output")) { actions?.toggleOutput() }
+            Button(L("View Output")) { runner.showSelectedExecution() }
                 .keyboardShortcut("j", modifiers: .command)
-                .disabled(actions == nil)
+                .disabled(runner.sessions.isEmpty)
         }
         CommandMenu(L("Run")) {
-            Button(runner.stopping ? L("Force stop the selected task") : L("Stop the selected task")) { runner.stop(force: runner.stopping) }
+            Button(runner.stopping ? L("Force stop the selected task") : L("Stop the selected task")) { runner.stopKeyExecution() }
                 .keyboardShortcut(".", modifiers: .command)
-                .disabled(!runner.selectedIsRunning)
+                .disabled(!runner.keyExecutionIsRunning)
         }
     }
 }

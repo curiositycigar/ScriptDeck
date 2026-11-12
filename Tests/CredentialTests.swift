@@ -187,11 +187,9 @@ private final class TestSecretVault: SecretVault, @unchecked Sendable {
     next.terminalView.process.send(data: Array("continue\r".utf8)[...])
     pump(until: { next.terminalView.isInputEchoDisabled && next.output.contains("HIDDEN_INPUT_READY") })
     runner.select(session.id)
-    do {
-        try runner.validateCredentialTarget(next.id)
-        check(false, "Switching records must prevent a pending credential fill")
-    } catch { }
-    check(true, "Switching records prevents credential delivery to the previously selected terminal")
+    try runner.validateCredentialTarget(next.id)
+    check(runner.selectedSessionID == session.id,
+          "A window-bound credential target remains valid when another session is selected")
     runner.select(next.id)
     finished = false
     failure = nil

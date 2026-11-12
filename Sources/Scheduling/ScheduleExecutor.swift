@@ -35,6 +35,8 @@ enum ScheduleExecutor {
         state.logPath = nil
         state.metadataPath = nil
         try ScheduleFiles.write(state, ScheduleFiles.runtime(root, id))
+        var instanceLease: ScriptInstanceLease?
+        defer { withExtendedLifetime(instanceLease) {} }
         var writer: RunLogWriter?
         var result: ExecutionOutcome = .launchFailed
         var exitCode: Int32?
@@ -49,6 +51,10 @@ enum ScheduleExecutor {
             state.metadataPath = log.metadataURL.path
             try ScheduleFiles.write(state, ScheduleFiles.runtime(root, id))
             try task.validate(requireFuture: false)
+            let allowsMultiple = try ScriptInstanceLease.allowsMultipleInstances(for: task.item,
+                                                                                 workspaceDirectory: task.workspaceDirectory)
+            instanceLease = try ScriptInstanceLease(item: task.item, workspaceID: task.workspaceID,
+                                                   allowsMultipleInstances: allowsMultiple)
             let command = try executionCommand(task.item, arguments: scriptArguments(for: task.item, values: task.values))
             log.appendMessage(L("Command: {0}", command.argv.map(shellQuote).joined(separator: " ")))
             log.appendMessage(L("Scheduled task: {0} · {1}", "\(task.name)", "\(task.workspaceName)"))

@@ -9,7 +9,9 @@ private struct InteractiveBlocksView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: InteractivePanelMetrics.blockSpacing) {
-            ForEach(Array(request.view.blocks.enumerated()).filter { ($0.element.region ?? .body) == region }, id: \.offset) { index, block in
+            ForEach(request.view.elements.filter { ($0.value.region ?? .body) == region }) { element in
+                let index = element.index
+                let block = element.value
                 switch block.type {
                 case .text:
                     Text(block.text ?? "")
@@ -22,11 +24,10 @@ private struct InteractiveBlocksView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 case .buttons:
                     InteractiveButtonLayout {
-                        ForEach(Array((block.items ?? []).enumerated()), id: \.offset) { _, item in
+                        ForEach(block.elements) { element in
+                            let item = element.value
                             Button(role: item.style == .destructive ? .destructive : nil) {
-                                if let data = item.data {
-                                    channel.submit(data, values: channel.selections, requestID: request.id)
-                                }
+                                channel.activate(item, requestID: request.id)
                             } label: {
                                 Text(item.text)
                                     .multilineTextAlignment(.center)
@@ -35,19 +36,20 @@ private struct InteractiveBlocksView: View {
                             .buttonStyle(.bordered)
                             .controlSize(.small)
                             .font(WorkspaceTypography.caption)
-                            .disabled(!channel.canSubmit(item, values: channel.selections))
+                            .disabled(!channel.waiting || channel.ended || !channel.canSubmit(item, values: channel.selections))
                         }
                     }
                 case .input, .file, .select, .toggle, .progress:
                     InteractiveFormControl(channel: channel, block: block, requestID: request.id)
+                        .disabled(block.type != .progress && (!channel.waiting || channel.ended))
                 case .list:
                     if let id = block.id {
                         InteractiveSelectionList(channel: channel, block: block, listID: id)
+                            .disabled(!channel.waiting || channel.ended)
                     }
                 }
             }
         }
-        .disabled(!channel.waiting || channel.ended)
     }
 }
 
@@ -56,6 +58,8 @@ private struct InteractiveFormControl: View {
     @ObservedObject var channel: InteractiveChannel
     let block: InteractiveBlock
     let requestID: UUID
+
+    @State private var isDropTargeted = false
 
     private var id: String { block.id ?? "" }
     private var input: Binding<String> {
@@ -93,19 +97,33 @@ private struct InteractiveFormControl: View {
                     set: { channel.inputs[id] = $0 ? "true" : "false" }
                 )).toggleStyle(.checkbox)
             case .file:
-                HStack(spacing: InteractivePanelMetrics.actionSpacing) {
-                    Button(L("Choose…"), action: chooseFiles).buttonStyle(.bordered)
-                    if !channel.selections[id, default: []].isEmpty {
-                        Button(L("Clear")) { channel.selections[id] = [] }.buttonStyle(.bordered)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: InteractivePanelMetrics.actionSpacing) {
+                        Button(L("Choose…"), action: chooseFiles).buttonStyle(.bordered)
+                        if !channel.selections[id, default: []].isEmpty {
+                            Button(L("Clear")) { channel.selections[id] = [] }.buttonStyle(.bordered)
+                        }
+                    }
+                    Text(L(block.mode == .directory ? "Drop folders here" : "Drop files here"))
+                        .foregroundStyle(.secondary)
+                    if channel.selections[id, default: []].isEmpty {
+                        Text(L("Nothing selected")).foregroundStyle(.secondary)
+                    } else {
+                        ForEach(channel.selections[id, default: []].sorted(), id: \.self) { path in
+                            Text(path).textSelection(.enabled)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                 }
-                if channel.selections[id, default: []].isEmpty {
-                    Text(L("Nothing selected")).foregroundStyle(.secondary)
-                } else {
-                    ForEach(channel.selections[id, default: []].sorted(), id: \.self) { path in
-                        Text(path).textSelection(.enabled)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(isDropTargeted ? WorkspaceStyle.selectionColor : WorkspaceStyle.groupedSurface,
+                            in: RoundedRectangle(cornerRadius: 6))
+                .contentShape(Rectangle())
+                .dropDestination(for: URL.self) { urls, _ in
+                    channel.selectFiles(urls, controlID: id, requestID: requestID)
+                } isTargeted: { targeted in
+                    isDropTargeted = targeted && channel.waiting && !channel.ended
                 }
             case .progress:
                 if let value = block.progress {
@@ -134,7 +152,7 @@ private struct InteractiveFormControl: View {
         let apply: (NSApplication.ModalResponse) -> Void = { response in
             guard response == .OK, channel.request?.id == requestID,
                   channel.waiting, !channel.ended else { return }
-            channel.selections[controlID] = Set(panel.urls.map(\.path))
+            channel.selectFiles(panel.urls, controlID: controlID, requestID: requestID)
         }
         if let window = NSApp.keyWindow { panel.beginSheetModal(for: window, completionHandler: apply) }
         else { panel.begin(completionHandler: apply) }
@@ -225,7 +243,6 @@ struct InteractivePanel: View {
                     VStack(alignment: .leading, spacing: InteractivePanelMetrics.blockSpacing) {
                         if let request = channel.request {
                             InteractiveBlocksView(channel: channel, request: request)
-                                .id(request.id)
                         } else {
                             status(L("Waiting for the script interface…"), symbol: "rectangle.and.hand.point.up.left")
                         }
@@ -237,12 +254,6 @@ struct InteractivePanel: View {
                         }
                         if channel.ended {
                             status(L("This session has ended. Interface controls are disabled."), symbol: "checkmark.circle")
-                        } else if channel.request != nil && !channel.waiting {
-                            HStack(spacing: InteractivePanelMetrics.actionSpacing) {
-                                ProgressView().controlSize(.small)
-                                Text(L("Waiting for the script…"))
-                            }
-                            .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
                         }
                     }
                     .padding(.horizontal, InteractivePanelMetrics.inset)
@@ -250,12 +261,27 @@ struct InteractivePanel: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay(alignment: .bottomTrailing) {
+                    if channel.showsProcessingIndicator {
+                        HStack(spacing: InteractivePanelMetrics.actionSpacing) {
+                            ProgressView().controlSize(.small)
+                            Text(L("Waiting for the script…"))
+                        }
+                        .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
+                        .padding(8)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                        .padding(InteractivePanelMetrics.inset)
+                        .allowsHitTesting(false)
+                        .accessibilityAddTraits(.updatesFrequently)
+                    }
+                }
                 if let request = channel.request, hasRegion(.footer, in: request) {
                     Divider()
                     fixedRegion(.footer, request: request)
                 }
             }
             .font(WorkspaceTypography.body)
+            .id(channel.request?.view.pageID)
         }
     }
 
@@ -265,7 +291,6 @@ struct InteractivePanel: View {
 
     private func fixedRegion(_ region: InteractiveBlock.Region, request: InteractiveRequest) -> some View {
         InteractiveBlocksView(channel: channel, request: request, region: region)
-            .id(request.id)
             .padding(.horizontal, InteractivePanelMetrics.inset)
             .padding(.vertical, 10)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -284,22 +309,25 @@ struct InteractivePanel: View {
 struct SessionOutputPane: View {
     @ObservedObject var session: ExecutionSession
     var onHiddenInput: (() -> Void)? = nil
+    var showsViewPicker = true
 
     var body: some View {
         VStack(spacing: 0) {
             if let channel = session.interactiveChannel {
-                Picker(L("Output View"), selection: $session.showingTerminalLog) {
-                    Text(L("Interactive UI")).tag(false)
-                    Text(L("Terminal Log")).tag(true)
+                if showsViewPicker {
+                    Picker(L("Output View"), selection: $session.showingTerminalLog) {
+                        Text(L("Interactive UI")).tag(false)
+                        Text(L("Terminal Log")).tag(true)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .controlSize(.small)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, InteractivePanelMetrics.inset)
+                    .padding(.vertical, 6)
+                    Divider()
                 }
-                .labelsHidden()
-                .pickerStyle(.segmented)
-                .controlSize(.small)
-                .fixedSize(horizontal: true, vertical: false)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, InteractivePanelMetrics.inset)
-                .padding(.vertical, 6)
-                Divider()
                 if session.showingTerminalLog { terminal }
                 else {
                     VStack(spacing: 0) {

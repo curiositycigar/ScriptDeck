@@ -5,6 +5,7 @@ struct ScheduleDashboard: View {
     @ObservedObject var workspaces: WorkspaceStore
     @ObservedObject var runner: ProcessRunner
     var showOutput: () -> Void
+    var showHistory: ((ScheduleHistoryScope) -> Void)? = nil
     @State private var creating = false
     @State private var editing: ScheduledTask?
     @State private var deleting: ScheduledTask?
@@ -230,7 +231,12 @@ struct ScheduleDashboard: View {
             .accessibilityLabel(task.enabled ? L("Pause") : L("Enable"))
             .help(L("Pausing affects future runs only. Edit a triggered one-time task to set a new execution time."))
             Spacer(minLength: 8)
-            Button { historyTask = task } label: { WorkspaceSymbol("clock.arrow.circlepath", size: .toolbar) }
+            Button {
+                if let showHistory {
+                    let state = schedules.state(for: task)
+                    showHistory(ScheduleHistoryScope(task: task, latestRunID: state?.runID, metadataPath: state?.metadataPath))
+                } else { historyTask = task }
+            } label: { WorkspaceSymbol("clock.arrow.circlepath", size: .toolbar) }
                 .buttonStyle(WorkspaceIconButtonStyle()).foregroundStyle(.secondary)
                 .help(L("Execution History")).accessibilityLabel(L("Execution History"))
             Button { editing = task } label: { WorkspaceSymbol("slider.horizontal.3", size: .toolbar) }
@@ -416,6 +422,7 @@ struct ScheduleEditor: View {
         }
         var task = initial ?? ScheduledTask(name: name, workspaceID: workspaceID,
                                             workspaceName: workspace?.name ?? "", item: item, values: supplied)
+        task.workspaceDirectory = workspace?.directory ?? initial?.workspaceDirectory
         task.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         task.item = item; task.values = supplied; task.kind = kind; task.date = date
         task.weekday = weekday; task.intervalMinutes = minutes; task.enabled = true

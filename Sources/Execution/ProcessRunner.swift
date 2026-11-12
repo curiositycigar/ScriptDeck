@@ -2,7 +2,7 @@ import AppKit
 import Combine
 
 /// App-wide execution registry. Global state is aggregated across every session;
-/// terminal commands and exports always target the selected session.
+/// execution windows bind controls and credential fills to their own session.
 @MainActor
 final class ProcessRunner: ObservableObject {
     @Published private(set) var sessions: [ExecutionSession] = []
@@ -10,6 +10,30 @@ final class ProcessRunner: ObservableObject {
     @Published private(set) var launchRevision = 0
     @Published private(set) var historyRevision = 0
     @Published private(set) var hiddenOutputRecordIDs = Set<String>()
+    private var executionWindows: [UUID: ExecutionWindowController] = [:]
+
+    func showExecution(_ session: ExecutionSession) {
+        guard sessions.contains(where: { $0 === session }) else { return }
+        select(session.id)
+        let controller = executionWindows[session.id] ?? ExecutionWindowController(session: session, runner: self)
+        executionWindows[session.id] = controller
+        controller.present()
+    }
+
+    var keyExecutionIsRunning: Bool {
+        executionWindows.values.contains { $0.window === NSApp.keyWindow && $0.session.isRunning }
+    }
+
+    func stopKeyExecution() {
+        guard let session = executionWindows.values.first(where: { $0.window === NSApp.keyWindow })?.session else { return }
+        session.stop(force: session.stopping)
+    }
+
+    func showSelectedExecution() {
+        guard let session = sessions.first(where: { $0.id == selectedSessionID }) ?? sessions.last else { return }
+        showExecution(session)
+    }
+
     private let preferences: AppPreferences
     private let idleSession: ExecutionSession
     private var subscriptions: [UUID: Set<AnyCancellable>] = [:]
@@ -62,8 +86,13 @@ final class ProcessRunner: ObservableObject {
     var hasPendingHistoryWrites: Bool { sessions.contains(where: \.hasPendingHistoryWrites) }
     func isWorkspaceRunning(_ id: String) -> Bool { runningSessions.contains { $0.workspaceID == id } }
     func protectedWorkspaceID(for id: String) -> String? { isWorkspaceRunning(id) ? id : nil }
+    func activeSessions(workspaceID: String?, scriptID: String) -> [ExecutionSession] {
+        runningSessions.filter { $0.workspaceID == workspaceID && $0.scriptID == scriptID }
+            .sorted { $0.startedAt > $1.startedAt }
+    }
+
     func isActive(workspaceID: String, scriptID: String) -> Bool {
-        runningSessions.contains { $0.workspaceID == workspaceID && $0.scriptID == scriptID }
+        !activeSessions(workspaceID: workspaceID, scriptID: scriptID).isEmpty
     }
 
     // Selected-session accessors keep terminal presentation separate from global activity.
@@ -86,10 +115,10 @@ final class ProcessRunner: ObservableObject {
     func focusTerminal() { selectedSession.focusTerminal() }
 
     func validateCredentialTarget(_ id: UUID) throws {
-        guard selectedSessionID == id, let session = sessions.first(where: { $0.id == id }),
+        guard let session = sessions.first(where: { $0.id == id }),
               session.isRunning, !session.stopping, !session.isBackgroundExecution,
               session.terminalView.acceptsInput else {
-            throw RunnerError(message: L("The target terminal changed or is no longer accepting input."))
+            throw RunnerError(message: L("The target terminal is no longer accepting input."))
         }
         guard session.terminalView.isInputEchoDisabled else {
             throw RunnerError(message: L("Password not sent. Wait until the script requests hidden password input."))
@@ -99,7 +128,7 @@ final class ProcessRunner: ObservableObject {
     func fillPassword(_ password: String, sessionID: UUID, appendReturn: Bool) async throws {
         try CredentialStore.validatePassword(password)
         try validateCredentialTarget(sessionID)
-        let terminal = selectedSession.terminalView
+        guard let terminal = sessions.first(where: { $0.id == sessionID })?.terminalView else { return }
         let data = Array((password + (appendReturn ? "\r" : "")).utf8)
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             terminal.process.send(data: data[...]) { result in
@@ -129,7 +158,12 @@ final class ProcessRunner: ObservableObject {
 
     @discardableResult
     func run(item: ScriptItem, arguments: [String], workspaceID: String? = nil,
-             workspaceName: String = "") throws -> ExecutionSession {
+             workspaceName: String = "", workspaceDirectory: String? = nil) throws -> ExecutionSession {
+        var item = item
+        item.allowsMultipleInstances = try ScriptInstanceLease.allowsMultipleInstances(for: item, workspaceDirectory: workspaceDirectory)
+        if !item.allowsMultipleInstances, let existing = activeSessions(workspaceID: workspaceID, scriptID: item.id).first {
+            return existing
+        }
         let selectNewSession = !isRunning || selectedSessionID == nil
         let session = ExecutionSession(preferences: preferences)
         try session.run(item: item, arguments: arguments, workspaceID: workspaceID, workspaceName: workspaceName)
@@ -173,7 +207,13 @@ final class ProcessRunner: ObservableObject {
     private func removeSessions(_ ids: Set<UUID>) {
         guard !ids.isEmpty else { return }
         sessions.removeAll { ids.contains($0.id) }
-        for id in ids { subscriptions.removeValue(forKey: id) }
+        for id in ids {
+            subscriptions.removeValue(forKey: id)
+            if let controller = executionWindows.removeValue(forKey: id) {
+                controller.close()
+                controller.window?.contentView = nil
+            }
+        }
         if let selectedSessionID, ids.contains(selectedSessionID) {
             self.selectedSessionID = runningSessions.first?.id ?? sessions.last?.id
         }

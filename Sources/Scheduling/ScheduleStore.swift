@@ -104,6 +104,21 @@ final class ScheduleStore: ObservableObject {
         states = updated
         runningIDs = running
     }
+    /// Add source locations to older schedules and follow workspace relocations.
+    /// The revision and occurrence ledger remain stable.
+    func synchronizeWorkspaces(_ workspaces: [Workspace]) {
+        for index in tasks.indices {
+            guard let workspace = workspaces.first(where: { $0.id == tasks[index].workspaceID }),
+                  tasks[index].workspaceDirectory != workspace.directory else { continue }
+            var task = tasks[index]
+            task.workspaceDirectory = workspace.directory
+            do {
+                try ScheduleFiles.write(task, ScheduleFiles.definition(root, task.id))
+                tasks[index] = task
+            } catch { self.error = error.localizedDescription }
+        }
+    }
+
     func save(_ input: ScheduledTask) throws {
         guard UUID(uuidString: input.id) != nil else { throw RunnerError(message: L("Invalid schedule ID.")) }
         guard !ScheduleFiles.isRunning(root: root, id: input.id) else { throw RunnerError(message: L("Wait for this scheduled task to finish before editing it.")) }

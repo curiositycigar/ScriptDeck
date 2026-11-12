@@ -12,7 +12,6 @@ struct RunnerView: View {
     @ObservedObject var schedules: ScheduleStore
     @ObservedObject var navigation: WorkspaceNavigation
     @State var schedulingItem: ScheduledTask?
-    @Environment(\.openWindow) var openWindow
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @State var showScriptDetails = false
     @State var showParameterHistory = false
@@ -36,7 +35,6 @@ struct RunnerView: View {
     @State var folderRevision = 0
     @State var deletingFolder: String?
     @State var dropTarget = false
-    @Binding var outputExpanded: Bool
 
     var selected: ScriptItem? { store.items.first { $0.id == session.selectedID } }
     var filtered: [ScriptItem] {
@@ -63,8 +61,8 @@ struct RunnerView: View {
         .toolbar { workspaceToolbar }
         .toolbarBackground(.visible, for: .windowToolbar)
         .focusedSceneValue(\.runnerActions, RunnerActions(
-            canImport: store.directoryURL != nil && store.configurationIssue == nil,
-            sidebarVisible: preferences.sidebarVisible, canToggleSidebar: navigation.destination == .scripts, outputExpanded: outputExpanded,
+            canImport: navigation.destination == .scripts && store.directoryURL != nil && store.configurationIssue == nil,
+            sidebarVisible: preferences.sidebarVisible, canToggleSidebar: navigation.destination == .scripts,
             importScripts: importScripts,
             newScript: { openEditor(ScriptItem()) },
             findScript: {
@@ -73,7 +71,7 @@ struct RunnerView: View {
                 // The search field must be mounted before focus is requested.
                 DispatchQueue.main.async { searchFocused = true }
             },
-            toggleSidebar: { preferences.sidebarVisible.toggle() }, toggleOutput: { outputExpanded.toggle() }
+            toggleSidebar: { preferences.sidebarVisible.toggle() }
         ))
         .onChange(of: session.selectedID) { _ in
             showScriptDetails = false
@@ -82,7 +80,7 @@ struct RunnerView: View {
             selectedSidebarFolder = nil
         }
         .onChange(of: navigation.destination) { destination in
-            if destination == .schedules {
+            if destination != .scripts {
                 searchFocused = false
                 focusedParameter = nil
             }
@@ -147,32 +145,17 @@ struct RunnerView: View {
     }
 
     var workspacePane: some View {
-        ZStack {
-            // Retain the split view and its native scroll views while another module is visible.
-            HSplitView {
-                if preferences.sidebarVisible {
-                    sidebar
-                        .frame(minWidth: 220, idealWidth: 240, maxWidth: 300, maxHeight: .infinity)
-                        .background(WorkspaceStyle.sidebar)
-                        .transition(.move(edge: .leading).combined(with: .opacity))
-                }
-                configurationPane
-                    .frame(minWidth: 490, maxWidth: .infinity, maxHeight: .infinity)
+        HSplitView {
+            if preferences.sidebarVisible {
+                sidebar
+                    .frame(minWidth: 220, idealWidth: 240, maxWidth: 300, maxHeight: .infinity)
+                    .background(WorkspaceStyle.sidebar)
+                    .transition(.move(edge: .leading).combined(with: .opacity))
             }
-            .workspaceAnimation(value: preferences.sidebarVisible, motion: .layout)
-            .opacity(navigation.destination == .scripts ? 1 : 0)
-            .disabled(navigation.destination != .scripts)
-            .allowsHitTesting(navigation.destination == .scripts)
-            .accessibilityHidden(navigation.destination != .scripts)
-
-            ScheduleDashboard(schedules: schedules, workspaces: workspaces, runner: runner,
-                              showOutput: { outputExpanded = true })
-                .opacity(navigation.destination == .schedules ? 1 : 0)
-                .disabled(navigation.destination != .schedules)
-                .allowsHitTesting(navigation.destination == .schedules)
-                .accessibilityHidden(navigation.destination != .schedules)
+            configurationPane
+                .frame(minWidth: 490, maxWidth: .infinity, maxHeight: .infinity)
         }
+        .workspaceAnimation(value: preferences.sidebarVisible, motion: .layout)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .workspaceAnimation(value: navigation.destination, motion: .layout)
     }
 }

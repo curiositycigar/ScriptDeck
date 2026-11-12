@@ -20,7 +20,7 @@ struct CredentialManagerView: View {
     private var busy: Bool { store.busy || filling }
     private var canFill: Bool {
         guard let session else { return false }
-        return runner.selectedSessionID == session.id && session.isRunning && !session.stopping && !session.isBackgroundExecution
+        return session.isRunning && !session.stopping && !session.isBackgroundExecution
     }
     private var sorted: [SavedCredential] {
         store.items.sorted { lhs, rhs in
@@ -43,22 +43,37 @@ struct CredentialManagerView: View {
                 Text(L("Script: ") + scriptName).font(WorkspaceTypography.body).textSelection(.enabled)
             }
             HStack(alignment: .top, spacing: 18) {
-                List(selection: $selectedID) {
+                List {
                     ForEach(sorted) { credential in
-                        HStack(spacing: 8) {
-                            WorkspaceSymbol("key").foregroundStyle(.secondary)
-                            Text(credential.name).font(WorkspaceTypography.bodyStrong).lineLimit(1).help(credential.name)
-                            Spacer()
-                            if let target, credential.scripts.contains(target) {
-                                WorkspaceSymbol("link").foregroundStyle(.secondary)
-                                    .accessibilityLabel(L("Associated with this script"))
+                        Button { selectedID = credential.id } label: {
+                            HStack(spacing: 8) {
+                                WorkspaceSymbol("key").foregroundStyle(.secondary)
+                                Text(credential.name).font(WorkspaceTypography.bodyStrong).lineLimit(1).help(credential.name)
+                                Spacer()
+                                if let target, credential.scripts.contains(target) {
+                                    WorkspaceSymbol("link").foregroundStyle(.secondary)
+                                        .accessibilityLabel(L("Associated with this script"))
+                                }
                             }
-                        }.padding(.vertical, 8).tag(credential.id)
-                            .workspaceListSelection(selectedID == credential.id)
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .workspaceListSelection(selectedID == credential.id)
+                        .accessibilityAddTraits(selectedID == credential.id ? .isSelected : [])
                     }
                 }
                 .listStyle(.inset)
-                .workspaceListAppearance().scrollContentBackground(.hidden)
+                .onMoveCommand { direction in
+                    guard !sorted.isEmpty else { return }
+                    let current = sorted.firstIndex { $0.id == selectedID } ?? 0
+                    switch direction {
+                    case .up: selectedID = sorted[max(0, current - 1)].id
+                    case .down: selectedID = sorted[min(sorted.count - 1, current + 1)].id
+                    default: break
+                    }
+                }
+                .scrollContentBackground(.hidden)
                 .padding(.horizontal, 8)
                 .background(WorkspaceStyle.groupedSurface)
                 .clipShape(RoundedRectangle(cornerRadius: 12))

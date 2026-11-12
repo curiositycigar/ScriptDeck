@@ -6,6 +6,7 @@ struct ExecutionHistoryView: View {
     @ObservedObject var workspaces: WorkspaceStore
     @ObservedObject var runner: ProcessRunner
     var scheduleScope: ScheduleHistoryScope? = nil
+    var canDismiss = true
     @StateObject private var model = HistoryViewModel()
     @Environment(\.dismiss) private var dismiss
     @State private var selectedID: String?
@@ -98,7 +99,12 @@ struct ExecutionHistoryView: View {
                     .buttonStyle(WorkspaceIconButtonStyle()).foregroundStyle(.secondary)
                     .help(L("Refresh")).accessibilityLabel(L("Refresh"))
                     .disabled(busy)
-                Button(L("Close")) { dismiss() }.keyboardShortcut(.cancelAction).disabled(model.deleting)
+                if let session = runner.sessions.first(where: { $0.recordID == selectedID }) {
+                    Button(L("View Output")) { runner.showExecution(session) }
+                }
+                if canDismiss {
+                    Button(L("Close")) { dismiss() }.keyboardShortcut(.cancelAction).disabled(model.deleting)
+                }
             }.padding(20)
             if scheduleScope == nil {
                 HStack(spacing: 12) {
@@ -145,7 +151,7 @@ struct ExecutionHistoryView: View {
                         .foregroundStyle(.secondary).allowsHitTesting(false)
                     }
                 }
-                detail.frame(minWidth: 540, maxWidth: .infinity, maxHeight: .infinity)
+                detail.frame(minWidth: 420, maxWidth: .infinity, maxHeight: .infinity)
             }
             HStack {
                 Text(L("{0} records", "\(filtered.count)")).monospacedDigit().foregroundStyle(.secondary)
@@ -156,7 +162,7 @@ struct ExecutionHistoryView: View {
                     .help(L("Logs are stored in logs/<script filename>/ beside each script."))
             }.font(WorkspaceTypography.caption).padding(.horizontal, 20).padding(.vertical, 10).background(WorkspaceStyle.chrome)
         }
-        .frame(minWidth: 960, idealWidth: 1040, minHeight: 620, idealHeight: 700)
+        .frame(minWidth: canDismiss ? 960 : 760, idealWidth: 1040, minHeight: 560, idealHeight: 700)
         .background(WorkspaceStyle.canvas)
         .workspaceTypography()
         .interactiveDismissDisabled(model.deleting || confirmingSingleDeletion)

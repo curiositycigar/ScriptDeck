@@ -41,21 +41,23 @@ extension RunnerView {
             Button(L("Export Workspace Package…")) { WorkspaceDialogs.export(workspaceInfo, from: workspaces) }
             Button(L("Manage Workspaces…"), action: manageWorkspaces)
         } label: {
-            HStack(spacing: 8) {
-                WorkspaceSymbol("square.stack.3d.up").foregroundStyle(.secondary)
+            HStack(spacing: SidebarLayout.itemSpacing) {
+                WorkspaceSymbol("square.stack.3d.up").foregroundStyle(.secondary).fixedSize()
                 Text(workspaceInfo.name)
-                    .font(WorkspaceTypography.sectionTitle).lineLimit(1).truncationMode(.middle)
-                Spacer(minLength: 0)
-                WorkspaceSymbol("chevron.down", size: .disclosure).foregroundStyle(.secondary)
+                    .underline(false)
+                    .font(WorkspaceTypography.bodyStrong).lineLimit(1).truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading).layoutPriority(-1)
+                WorkspaceSymbol("chevron.down", size: .disclosure).foregroundStyle(.secondary).fixedSize()
             }
-            .padding(.horizontal, 8)
-            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .padding(.horizontal, SidebarLayout.contentInset)
+            .frame(maxWidth: .infinity, minHeight: SidebarLayout.controlHeight, alignment: .leading)
             .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
         .menuIndicator(.hidden)
+        .buttonStyle(WorkspaceSwitcherButtonStyle())
         .frame(maxWidth: .infinity, alignment: .leading)
-        .help(workspaceInfo.directory)
+        .help(L("Switch workspace: ") + workspaceInfo.name + "\n" + workspaceInfo.directory)
         .accessibilityLabel(L("Switch workspace: ") + workspaceInfo.name)
     }
 
@@ -73,8 +75,7 @@ extension RunnerView {
     }
     func addWorkspace() { WorkspaceDialogs.add(to: workspaces) }
     func manageWorkspaces() {
-        preferences.settingsTab = .workspaces
-        openWindow(id: "settings")
+        navigation.managingWorkspaces = true
     }
     func openEditor(_ item: ScriptItem) {
         editorRevision = store.revision

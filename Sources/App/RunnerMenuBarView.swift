@@ -4,6 +4,7 @@ import AppKit
 struct RunnerMenuBarView: View {
     @ObservedObject var runner: ProcessRunner
     @ObservedObject var schedules: ScheduleStore
+    @ObservedObject var navigation: WorkspaceNavigation
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
@@ -15,8 +16,7 @@ struct RunnerMenuBarView: View {
             Text(L("Running · {0}", "\(runner.runningSessions.count)"))
             ForEach(runner.runningSessions) { session in
                 Button {
-                    runner.select(session.id)
-                    showMainWindow()
+                    runner.showExecution(session)
                 } label: {
                     Text("\(session.workspaceName) · \(session.activeName)")
                 }
@@ -36,7 +36,8 @@ struct RunnerMenuBarView: View {
         }
         Divider()
         Button(L("Settings…")) {
-            openWindow(id: "settings")
+            navigation.destination = .settings
+            openWindow(id: "main")
             NSApp.activate(ignoringOtherApps: true)
         }
         Button(L("Quit ScriptDeck")) { NSApp.terminate(nil) }

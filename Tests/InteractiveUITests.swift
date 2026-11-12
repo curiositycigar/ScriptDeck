@@ -5,6 +5,10 @@ import QuartzCore
 
 @MainActor
 func runInteractiveUISelfTests(root: URL) throws {
+    try checkInteractiveFileSelection(root: root)
+    try checkInteractiveRefreshLifecycle()
+    try checkInteractivePageState()
+    try checkInteractiveStableIdentity()
     try checkInteractiveFormControls()
     try checkInteractiveControlsDemo(root: root)
     let valid = Data(#"{"blocks":[{"type":"list","id":"files","multiple":true,"items":[{"id":"a","text":"a ' $(literal).zip"}]},{"type":"buttons","items":[{"text":"Delete","data":"delete"}]}]}"#.utf8)
@@ -49,6 +53,7 @@ func runInteractiveUISelfTests(root: URL) throws {
     """.write(to: source, atomically: true, encoding: .utf8)
     var item = ScriptItem.importing(source)
     item.interactiveUI = true
+    item.allowsMultipleInstances = true
     let encoded = try JSONEncoder().encode(item)
     let decoded = try JSONDecoder().decode(ScriptItem.self, from: encoded)
     check(decoded.interactiveUI, "Interactive UI configuration survives library and workspace serialization")
@@ -170,6 +175,48 @@ func runInteractiveUISelfTests(root: URL) throws {
 }
 
 @MainActor
+func checkInteractiveRefreshLifecycle() throws {
+    let channel = try InteractiveChannel()
+    defer { channel.finish() }
+    let actions = InteractiveView(blocks: [
+        InteractiveBlock(type: .text, text: "Files"),
+        InteractiveBlock(type: .buttons, items: [InteractiveItem(text: "Refresh", data: "refresh")])
+    ])
+    func publish(_ view: InteractiveView) throws -> UUID {
+        let request = InteractiveRequest(id: UUID(), view: view)
+        try JSONEncoder().encode(request).write(to: channel.directory.appendingPathComponent("request.json"), options: .atomic)
+        channel.receive()
+        return request.id
+    }
+    let first = try publish(actions)
+    channel.submit("refresh", values: [:], requestID: first)
+    check(!channel.waiting && !channel.showsProcessingIndicator, "Submission locks controls without immediately flashing loading")
+    let second = try publish(actions)
+    RunLoop.current.run(until: Date().addingTimeInterval(0.35))
+    check(channel.waiting && !channel.showsProcessingIndicator, "A fast replacement cancels the previous loading indicator")
+    channel.submit("refresh", values: [:], requestID: first)
+    check(channel.waiting, "Retaining rendered views still rejects stale request callbacks")
+    channel.submit("refresh", values: [:], requestID: second)
+    pump(until: { channel.showsProcessingIndicator })
+    check(!channel.waiting, "Slow actions display loading while preventing duplicate submission")
+    let response = channel.directory.appendingPathComponent("response-\(second).json")
+    let original = try Data(contentsOf: response)
+    channel.submit("refresh", values: [:], requestID: second)
+    let afterDuplicate = try Data(contentsOf: response)
+    check(original == afterDuplicate, "Repeated clicks cannot replace the submitted response")
+    for progress in [0.1, 0.5, 1.0] {
+        _ = try publish(InteractiveView(blocks: [InteractiveBlock(type: .progress, progress: progress)]))
+        RunLoop.current.run(until: Date().addingTimeInterval(0.3))
+        check(!channel.waiting && !channel.showsProcessingIndicator, "Display-only progress does not imply a pending action")
+    }
+    let final = try publish(actions)
+    channel.submit("refresh", values: [:], requestID: final)
+    channel.finish()
+    RunLoop.current.run(until: Date().addingTimeInterval(0.35))
+    check(channel.ended && !channel.showsProcessingIndicator, "Ending a session cancels delayed loading")
+}
+
+@MainActor
 func checkInteractiveControlsDemo(root: URL) throws {
     // Copy only the known public fixture; never run scripts from user workspaces.
     let example = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
@@ -212,6 +259,69 @@ func checkInteractiveControlsDemo(root: URL) throws {
           "Public shell demo parses submitted form values with macOS plutil and completes")
     check(!session.output.contains("synthetic secret never logged"), "Demo never logs password values")
     pump(until: { !session.hasPendingHistoryWrites })
+}
+
+@MainActor
+func checkInteractiveFileSelection(root: URL) throws {
+    let folder = root.appendingPathComponent("drop-fixtures", isDirectory: true)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    let firstFile = folder.appendingPathComponent("a ' 中文.txt")
+    let secondFile = folder.appendingPathComponent("b.txt")
+    try Data().write(to: firstFile)
+    try Data().write(to: secondFile)
+    let channel = try InteractiveChannel()
+    defer { channel.finish() }
+    let view = try InteractiveView.decode(Data(#"{"blocks":[{"type":"file","id":"single"},{"type":"file","id":"multi","multiple":true},{"type":"file","id":"folder","mode":"directory"},{"type":"buttons","items":[{"text":"Submit","data":"submit"}]}]}"#.utf8))
+    func publish(_ nextView: InteractiveView? = nil) throws -> UUID {
+        let request = InteractiveRequest(id: UUID(), view: nextView ?? view)
+        try JSONEncoder().encode(request).write(to: channel.directory.appendingPathComponent("request.json"), options: .atomic)
+        channel.receive()
+        return request.id
+    }
+    let id = try publish()
+    check(channel.selectFiles([folder, firstFile, secondFile], controlID: "single", requestID: id)
+          && channel.selections["single"] == [firstFile.path],
+          "Single-file drops skip directories and keep the first compatible path")
+    check(channel.selectFiles([firstFile, secondFile, firstFile, folder], controlID: "multi", requestID: id)
+          && channel.selections["multi"] == [firstFile.path, secondFile.path],
+          "Multi-file drops accept local Unicode paths and remove duplicates")
+    check(channel.selectFiles([firstFile, folder], controlID: "folder", requestID: id)
+          && channel.selections["folder"] == [folder.path],
+          "Directory controls accept folders and reject files")
+    check(!channel.selectFiles([folder, URL(string: "https://example.com/file")!, folder.appendingPathComponent("missing")], controlID: "single", requestID: id)
+          && channel.selections["single"] == [firstFile.path],
+          "Rejected drops preserve the existing selection")
+    check(channel.selectFiles([secondFile], controlID: "multi", requestID: id)
+          && channel.selections["multi"] == [secondFile.path],
+          "A successful drop replaces previous paths")
+    _ = try publish()
+    check(!channel.selectFiles([firstFile], controlID: "single", requestID: id)
+          && channel.selections["single"] == [firstFile.path]
+          && channel.selections["multi"] == [secondFile.path]
+          && channel.selections["folder"] == [folder.path],
+          "Compatible file pickers preserve choices across refresh and reject stale drops")
+    channel.selections["single"] = []
+    _ = try publish()
+    check(channel.selections["single", default: []].isEmpty, "Clearing a file picker persists across refresh")
+    var changed = view
+    changed.blocks[1].multiple = false
+    changed.blocks[2].mode = .file
+    _ = try publish(changed)
+    check(channel.selections["multi"] == nil && channel.selections["folder"] == nil,
+          "Changing picker mode or multiplicity resets incompatible choices")
+    _ = try publish(InteractiveView(blocks: [InteractiveBlock(type: .text, text: "Different page")]))
+    _ = try publish()
+    check(channel.selections.values.allSatisfy(\.isEmpty),
+          "Returning from another page starts with empty file pickers")
+    let currentID = channel.request!.id
+    channel.submit("submit", values: channel.selections, requestID: currentID)
+    check(!channel.selectFiles([firstFile], controlID: "single", requestID: currentID),
+          "Drops cannot edit a submitted request")
+    _ = try publish()
+    let finalID = channel.request!.id
+    channel.finish()
+    check(!channel.selectFiles([firstFile], controlID: "single", requestID: finalID),
+          "Drops cannot edit a completed session")
 }
 
 @MainActor
@@ -398,6 +508,42 @@ func checkInteractiveAdaptiveLayout() throws {
         }
     }
 
+    // A pending action and a compatible refresh must not move the scrolled document.
+    let refreshView = InteractiveView(blocks: [
+        InteractiveBlock(type: .text, text: "Files", region: .header),
+        InteractiveBlock(type: .list, id: "files", items: (0..<60).map {
+            InteractiveItem(id: "file-\($0)", text: "File \($0)")
+        }),
+        InteractiveBlock(type: .buttons, items: [InteractiveItem(text: "Refresh", data: "refresh")], region: .footer)
+    ])
+    let refreshRequest = InteractiveRequest(id: UUID(), view: refreshView)
+    try JSONEncoder().encode(refreshRequest).write(to: channel.directory.appendingPathComponent("request.json"), options: .atomic)
+    channel.receive()
+    RunLoop.current.run(until: Date().addingTimeInterval(0.12))
+    host.layoutSubtreeIfNeeded()
+    let scroll = descendants(host).compactMap { $0 as? NSScrollView }.first!
+    scroll.contentView.scroll(to: NSPoint(x: 0, y: 180))
+    scroll.reflectScrolledClipView(scroll.contentView)
+    let origin = scroll.contentView.bounds.origin
+    let documentHeight = scroll.documentView!.bounds.height
+    let viewportRect = host.convert(scroll.bounds, from: scroll)
+    channel.submit("refresh", values: [:], requestID: refreshRequest.id)
+    pump(until: { channel.showsProcessingIndicator })
+    host.layoutSubtreeIfNeeded()
+    check(scroll.contentView.bounds.origin == origin && scroll.documentView!.bounds.height == documentHeight,
+          "Loading feedback preserves document height and scroll position")
+    check(host.convert(scroll.bounds, from: scroll) == viewportRect,
+          "Loading does not move fixed regions or resize the viewport")
+    var updatedView = refreshView
+    updatedView.blocks[1].items?[0].text = "Updated file"
+    let updatedRequest = InteractiveRequest(id: UUID(), view: updatedView)
+    try JSONEncoder().encode(updatedRequest).write(to: channel.directory.appendingPathComponent("request.json"), options: .atomic)
+    channel.receive()
+    RunLoop.current.run(until: Date().addingTimeInterval(0.12))
+    host.layoutSubtreeIfNeeded()
+    let updatedScroll = descendants(host).compactMap { $0 as? NSScrollView }.first!
+    check(updatedScroll === scroll && updatedScroll.contentView.bounds.origin == origin,
+          "Compatible request updates retain the native scroll view and its position")
 }
 
 @MainActor
@@ -455,4 +601,200 @@ func checkHiddenInputNotice(root: URL) throws {
     check(!stopped.needsHiddenInputNotice, "Stopping clears the hidden-input notice immediately")
     pump(until: { !stopped.isRunning })
     pump(until: { !session.hasPendingHistoryWrites && !stopped.hasPendingHistoryWrites })
+}
+
+
+@MainActor
+func checkInteractivePageState() throws {
+    let channel = try InteractiveChannel()
+    defer { channel.finish() }
+    let source = #"""
+    {"pageID":"upload","blocks":[
+      {"type":"input","id":"name"},
+      {"type":"input","id":"secret","secure":true},
+      {"type":"select","id":"env","items":[{"id":"a","text":"A"},{"id":"b","text":"B"}]},
+      {"type":"toggle","id":"enabled"},
+      {"type":"file","id":"local"},
+      {"type":"list","id":"files","multiple":true,"items":[{"id":"a","text":"A"},{"id":"b","text":"B"}]},
+      {"type":"buttons","id":"actions","items":[
+        {"id":"preset","text":"Example","action":{"type":"setValue","target":"name","value":"example.txt"}},
+        {"text":"Disabled","disabled":true,"action":{"type":"setValue","target":"name","value":"disabled"}},
+        {"text":"Selected only","requiresSelection":"files","action":{"type":"setValue","target":"name","value":"selected.txt"}},
+        {"text":"Submit","data":"submit"}
+      ]}
+    ]}
+    """#
+    let view = try InteractiveView.decode(Data(source.utf8))
+    let decoded = try InteractiveView.decode(JSONEncoder().encode(view))
+    check(decoded == view, "Page IDs and local actions round-trip through JSON")
+    @discardableResult func publish(_ next: InteractiveView) throws -> UUID {
+        let request = InteractiveRequest(id: UUID(), view: next)
+        try JSONEncoder().encode(request).write(to: channel.directory.appendingPathComponent("request.json"), options: .atomic)
+        channel.receive()
+        check(channel.issue == nil, "Page-state fixture is accepted")
+        return request.id
+    }
+    let id = try publish(view)
+    channel.inputs["name"] = "typed.txt"
+    channel.inputs["secret"] = "synthetic secret"
+    channel.inputs["env"] = "b"
+    channel.inputs["enabled"] = "true"
+    channel.selections["local"] = ["/tmp/synthetic.txt"]
+    channel.selections["files"] = ["a", "b"]
+    var next = view
+    next.blocks[5].items?.removeLast()
+    let refreshed = try publish(next)
+    check(channel.inputs["name"] == "typed.txt" && channel.inputs["env"] == "b" && channel.inputs["enabled"] == "true",
+          "Same named page preserves unassigned input, select, and toggle values")
+    check(channel.inputs["secret"] == "" && channel.selections["files"] == ["a"] && channel.selections["local"] == ["/tmp/synthetic.txt"],
+          "Passwords clear and list retention intersects remaining IDs while file choices persist")
+    let preset = next.blocks[6].items![0]
+    channel.activate(preset, requestID: id)
+    check(channel.inputs["name"] == "typed.txt", "Stale local actions cannot alter a refreshed page")
+    channel.activate(next.blocks[6].items![1], requestID: refreshed)
+    check(channel.inputs["name"] == "typed.txt", "Disabled local actions do not assign values")
+    channel.activate(preset, requestID: refreshed)
+    check(channel.inputs["name"] == "example.txt" && channel.waiting && channel.request?.id == refreshed
+          && channel.selections["local"] == ["/tmp/synthetic.txt"] && !channel.showsProcessingIndicator,
+          "Local presets change only their target and keep the current interactive request active")
+    check(!FileManager.default.fileExists(atPath: channel.directory.appendingPathComponent("response-\(refreshed).json").path),
+          "Local assignments do not send callbacks or complete the helper exchange")
+    channel.selections["files"] = []
+    channel.activate(next.blocks[6].items![2], requestID: refreshed)
+    check(channel.inputs["name"] == "example.txt", "Selection requirements also guard local actions")
+    channel.activate(InteractiveItem(text: "Forged", action: InteractiveLocalAction(type: .setValue, target: "name", value: "forged")), requestID: refreshed)
+    check(channel.inputs["name"] == "example.txt", "Unpublished local actions are rejected")
+    channel.activate(next.blocks[6].items![3], requestID: refreshed)
+    let response = try JSONDecoder().decode(InteractiveResponse.self, from: Data(contentsOf: channel.directory.appendingPathComponent("response-\(refreshed).json")))
+    check(response.event?.values["name"] == ["example.txt"] && !channel.waiting,
+          "Ordinary submission includes locally assigned values and locks controls")
+    channel.activate(preset, requestID: refreshed)
+    check(!channel.waiting, "Local actions cannot unlock a submitted view")
+
+    next.blocks[0].value = ""
+    next.blocks[2].value = "a"
+    next.blocks[3].checked = false
+    next.blocks[4].reset = true
+    next.blocks[5].reset = true
+    _ = try publish(next)
+    check(channel.inputs["name"] == "" && channel.inputs["env"] == "a" && channel.inputs["enabled"] == "false"
+          && channel.selections.isEmpty, "Explicit defaults and reset clear retained state")
+    let resetRoundTrip = try InteractiveView.decode(JSONEncoder().encode(next))
+    check(resetRoundTrip == next, "Explicit reset survives JSON transport")
+    channel.inputs["name"] = "edited"
+    channel.inputs["env"] = "b"
+    channel.inputs["enabled"] = "true"
+    channel.selections["local"] = ["/tmp/synthetic.txt"]
+    channel.selections["files"] = ["a"]
+    var reset = view
+    for index in [0, 2, 3, 4, 5] { reset.blocks[index].reset = true }
+    _ = try publish(reset)
+    check(channel.inputs["name"] == "" && channel.inputs["env"] == "a" && channel.inputs["enabled"] == "false"
+          && channel.selections.isEmpty, "Reset without explicit defaults uses each control's initial state")
+
+    _ = try publish(view)
+    channel.inputs["name"] = "other page"
+    channel.selections["local"] = ["/tmp/synthetic.txt"]
+    next = view
+    next.pageID = "another-page"
+    _ = try publish(next)
+    check(channel.inputs["name"] == "" && channel.selections.isEmpty, "Changing page identity clears all form and file state")
+    _ = try publish(view)
+    check(channel.inputs["name"] == "" && channel.selections.isEmpty, "Returning to a page starts fresh rather than restoring a hidden cache")
+    channel.inputs["name"] = "removed"
+    next = view
+    next.blocks.removeFirst()
+    next.blocks[5].items = [InteractiveItem(text: "Submit", data: "submit")]
+    _ = try publish(next)
+    _ = try publish(view)
+    check(channel.inputs["name"] == "", "Removed controls do not resurrect stale input on return")
+    channel.inputs["name"] = "single line"
+    next = view
+    next.blocks[0].multiline = true
+    _ = try publish(next)
+    check(channel.inputs["name"] == "", "Changing input compatibility clears retained content")
+    channel.inputs["env"] = "b"
+    next.blocks[2].items?.removeLast()
+    _ = try publish(next)
+    check(channel.inputs["env"] == "a", "Removed select options fall back to a valid current option")
+    channel.selections["files"] = ["a"]
+    next.blocks[5].multiple = false
+    _ = try publish(next)
+    check(channel.selections["files"] == nil, "Changing list multiplicity resets its selections")
+    channel.finish()
+    channel.activate(preset, requestID: channel.request!.id)
+    check(channel.ended && !channel.waiting, "Local actions cannot modify an ended session")
+
+    let invalid = [
+        #"{"pageID":"","blocks":[]}"#,
+        #"{"blocks":[{"type":"text","id":"same","text":"A"},{"type":"input","id":"same"}]}"#,
+        #"{"blocks":[{"type":"text","id":"","text":"A"}]}"#,
+        #"{"blocks":[{"type":"text","text":"A","reset":true}]}"#,
+        #"{"blocks":[{"type":"buttons","items":[{"text":"A","data":"a","action":{"type":"setValue","target":"name","value":"x"}}]}]}"#,
+        #"{"blocks":[{"type":"input","id":"name"},{"type":"buttons","items":[{"text":"A","action":{"type":"setValue","target":"name","value":"x"}}]}]}"#,
+        #"{"blocks":[{"type":"buttons","items":[{"text":"A","action":{"type":"setValue","target":"missing","value":"x"}},{"text":"OK","data":"ok"}]}]}"#,
+        #"{"blocks":[{"type":"input","id":"secret","secure":true},{"type":"buttons","items":[{"text":"A","action":{"type":"setValue","target":"secret","value":"x"}},{"text":"OK","data":"ok"}]}]}"#,
+        #"{"blocks":[{"type":"file","id":"local"},{"type":"buttons","items":[{"text":"A","action":{"type":"setValue","target":"local","value":"/tmp/x"}},{"text":"OK","data":"ok"}]}]}"#,
+        #"{"blocks":[{"type":"buttons","items":[{"id":"same","text":"A","data":"a"},{"id":"same","text":"B","data":"b"}]}]}"#,
+        #"{"blocks":[{"type":"buttons","items":[{"text":"A","action":{"type":"execute","target":"name","value":"x"}},{"text":"OK","data":"ok"}]}]}"#
+    ]
+    for json in invalid {
+        do { _ = try InteractiveView.decode(Data(json.utf8)); fatalError("Invalid page or local action accepted") }
+        catch { check(true, "Invalid identities and local actions are rejected before rendering") }
+    }
+}
+
+@MainActor
+func checkInteractiveStableIdentity() throws {
+    let channel = try InteractiveChannel()
+    defer { channel.finish() }
+    var view = InteractiveView(blocks: [
+        InteractiveBlock(type: .input, id: "name", value: "example.txt"),
+        InteractiveBlock(type: .file, id: "local"),
+        InteractiveBlock(type: .buttons, id: "actions", items: [
+            InteractiveItem(id: "preset", text: "Example", action: InteractiveLocalAction(type: .setValue, target: "name", value: "changed.txt")),
+            InteractiveItem(id: "submit", text: "Submit", data: "submit")
+        ])
+    ], pageID: "upload")
+    @discardableResult func publish() throws -> UUID {
+        let request = InteractiveRequest(id: UUID(), view: view)
+        try JSONEncoder().encode(request).write(to: channel.directory.appendingPathComponent("request.json"), options: .atomic)
+        channel.receive()
+        return request.id
+    }
+    let id = try publish()
+    let host = NSHostingView(rootView: InteractivePanel(channel: channel))
+    host.sizingOptions = []
+    let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 350),
+                          styleMask: [.titled, .resizable], backing: .buffered, defer: false)
+    window.contentView = host
+    window.orderFront(nil)
+    defer { window.orderOut(nil); window.contentView = nil }
+    func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+    func layout() {
+        RunLoop.current.run(until: Date().addingTimeInterval(0.12))
+        host.layoutSubtreeIfNeeded()
+    }
+    layout()
+    let field = descendants(host).compactMap { $0 as? NSTextField }.first { $0.stringValue == "example.txt" && $0.isEditable }!
+    window.makeFirstResponder(field)
+    let editor = window.firstResponder
+    let preset = view.blocks[2].items![0]
+    channel.activate(preset, requestID: id)
+    layout()
+    let localField = descendants(host).compactMap { $0 as? NSTextField }.first { $0.stringValue == "changed.txt" && $0.isEditable }
+    check(localField === field && window.firstResponder === editor && channel.request?.id == id,
+          "Local assignment preserves the native field, focus, and current request")
+    view.blocks[0].value = nil
+    view.blocks.insert(InteractiveBlock(type: .text, id: "notice", text: "A new notice"), at: 0)
+    view.blocks[3].items?.reverse()
+    _ = try publish()
+    layout()
+    let refreshedField = descendants(host).compactMap { $0 as? NSTextField }.first { $0.stringValue == "changed.txt" && $0.isEditable }
+    check(refreshedField === field && window.firstResponder === editor,
+          "Stable block IDs preserve the native input and focus when preceding content is inserted")
+    check(view.elements[1].id == .named("name") && view.blocks[3].elements[1].id == .named("preset"),
+          "Block and button identities follow declared IDs when their positions change")
+    let legacy = InteractiveView(blocks: [InteractiveBlock(type: .text, text: "Legacy")])
+    check(legacy.elements[0].id == .position(0), "Legacy blocks retain positional identity without requiring IDs")
 }

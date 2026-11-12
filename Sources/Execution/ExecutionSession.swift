@@ -37,6 +37,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
     @Published private(set) var recordID: String?
     @Published private(set) var historyIssue: String?
     private var logWriter: RunLogWriter?
+    private var instanceLease: ScriptInstanceLease?
     @Published private(set) var pendingHistoryRecordIDs = Set<String>()
     var protectedHistoryRecordIDs: Set<String> {
         pendingHistoryRecordIDs.union(isRunning ? Set([recordID].compactMap { $0 }) : [])
@@ -63,6 +64,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
     private var scheduledLogOffset: UInt64 = 0
     private var scheduledState: ScheduleRuntime?
     var isBackgroundExecution: Bool { scheduledTaskID != nil }
+    var instanceLabel: String { L("Instance {0}", String((recordID ?? id.uuidString).prefix(6)).uppercased()) }
 
     func updateScheduled(task: ScheduledTask, state: ScheduleRuntime, root: URL, running: Bool) {
         scheduledState = state
@@ -126,6 +128,8 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
     func run(item: ScriptItem, arguments: [String], workspaceID: String? = nil, workspaceName: String = "") throws {
         guard recordID == nil else { throw RunnerError(message: L("An execution session can only be started once.")) }
         let command = try executionCommand(item, arguments: arguments)
+        let lease = try ScriptInstanceLease(item: item, workspaceID: workspaceID,
+                                             allowsMultipleInstances: item.allowsMultipleInstances)
         guard let executable = Bundle.main.executableURL?.path else {
             throw RunnerError(message: L("Unable to find the app's script execution entry point."))
         }
@@ -143,6 +147,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
                 }
             }
         } catch { throw RunnerError(message: L("Unable to create the execution log. The task was not started: {0}", "\(error.localizedDescription)")) }
+        instanceLease = lease
         interactiveChannel = channel
         logWriter = writer
         recordID = runID
@@ -290,6 +295,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         }
         logWriter = nil
         terminalView.acceptsInput = false
+        instanceLease = nil
         endedAt = Date()
         isRunning = false
         stopping = false

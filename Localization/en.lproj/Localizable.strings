@@ -555,3 +555,60 @@
 "Send" = "Send";
 
 "Enter Hidden Input…" = "Enter Hidden Input…";
+
+"Add scripts to Favorites using the star beside a script's name." = "Add scripts to Favorites using the star beside a script's name.";
+"Add to Favorites" = "Add to Favorites";
+"Browse Scripts" = "Browse Scripts";
+"Check library.json. If the folder has moved, relocate it in workspace management." = "Check library.json. If the folder has moved, relocate it in workspace management.";
+"Configure & Run" = "Configure & Run";
+"Copy Log" = "Copy Log";
+"Elapsed" = "Elapsed";
+"Export Log" = "Export Log";
+"Favorite Actions" = "Favorite Actions";
+"Favorite Scripts" = "Favorite Scripts";
+"Home" = "Home";
+"Logs" = "Logs";
+"Manual Task" = "Manual Task";
+"Navigation" = "Navigation";
+"No upcoming scheduled tasks" = "No upcoming scheduled tasks";
+"Open Script" = "Open Script";
+"Open the execution window to view progress, or run again" = "Open the execution window to view progress, or run again";
+"Open the workspace to check this script." = "Open the workspace to check this script.";
+"Remove from Favorites" = "Remove from Favorites";
+"Running Tasks" = "Running Tasks";
+"Scheduled Task" = "Scheduled Task";
+"Script Unavailable" = "Script Unavailable";
+"The target terminal is no longer accepting input." = "The target terminal is no longer accepting input.";
+"Upcoming Scheduled Tasks" = "Upcoming Scheduled Tasks";
+"View All" = "View All";
+
+"All Logs" = "All Logs";
+
+"Allow Multiple Instances" = "Allow Multiple Instances";
+"Run this script again while other instances are running. Each instance has its own window and output." = "Run this script again while other instances are running. Each instance has its own window and output.";
+"Only one instance of this script can run in this workspace. Manual runs and scheduled tasks share this limit." = "Only one instance of this script can run in this workspace. Manual runs and scheduled tasks share this limit.";
+"Unable to acquire the script instance lock." = "Unable to acquire the script instance lock.";
+"This script already has a running instance. Open its current instance to view progress." = "This script already has a running instance. Open its current instance to view progress.";
+"Instance {0}" = "Instance {0}";
+"Instances ({0})" = "Instances ({0})";
+"View Current Instance" = "View Current Instance";
+"Running Instances" = "Running Instances";
+"Started {0}" = "Started {0}";
+"{0} instances running" = "{0} instances running";
+"Run Another Instance" = "Run Another Instance";
+"Open {0}" = "Open {0}";
+
+"Execution Details" = "Execution Details";
+
+"Instance ID" = "Instance ID";
+
+"Execution Source" = "Execution Source";
+
+"Start Time" = "Start Time";
+
+"End Time" = "End Time";
+
+"Status" = "Status";
+
+"Drop files here" = "Drop files here";
+"Drop folders here" = "Drop folders here";

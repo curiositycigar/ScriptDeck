@@ -29,6 +29,7 @@ struct ScheduledTask: Codable, Identifiable {
     var intervalMinutes = 60
     var timeZoneID = TimeZone.current.identifier
     var createdAt = Date()
+    var workspaceDirectory: String?
 
     var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)

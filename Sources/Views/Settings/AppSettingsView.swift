@@ -13,14 +13,13 @@ struct AppSettingsView: View {
             Group {
                 switch preferences.settingsTab {
                 case .general: generalPane
-                case .workspaces: WorkspaceSettingsView(workspaces: workspaces, runner: runner)
                 case .credentials: CredentialManagerView(runner: runner, canDismiss: false)
                 case .terminal: terminalPane
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .frame(width: 940, height: 600)
+        .frame(minWidth: 680, maxWidth: .infinity, minHeight: 500, maxHeight: .infinity)
         .background(WorkspaceStyle.canvas)
         .workspaceTypography()
     }
@@ -80,7 +79,6 @@ private struct SettingsSidebar: View {
     @Binding var selection: SettingsTab
     private let tabs: [(SettingsTab, String, String)] = [
         (.general, "General", "gearshape"),
-        (.workspaces, "Workspaces", "square.stack.3d.up"),
         (.credentials, "Credentials", "key"),
         (.terminal, "Terminal", "terminal")
     ]
@@ -134,7 +132,7 @@ private struct SettingsSection<Content: View>: View {
 struct WorkspaceSettingsView: View {
     @ObservedObject var workspaces: WorkspaceStore
     @ObservedObject var runner: ProcessRunner
-    @Environment(\.openWindow) private var openWindow
+    var onOpen: () -> Void = {}
     @State private var selectedID: String?
     @State private var editing: Workspace?
     @State private var draftName = ""
@@ -210,7 +208,7 @@ struct WorkspaceSettingsView: View {
                     }
                     .menuStyle(.borderlessButton).menuIndicator(.hidden)
                     .help(L("More Actions")).accessibilityLabel(L("More Actions"))
-                    Button(L("Open")) { workspaces.select(selected.id); openWindow(id: "main") }
+                    Button(L("Open")) { workspaces.select(selected.id); onOpen() }
                         .workspacePrimaryAction()
                 }
             }

@@ -52,6 +52,11 @@ struct ScriptEditor: View {
                             TextField(L("Working Directory"), text: $item.workingDirectory, prompt: Text(L("Leave empty to use the script's folder")))
                             Button(L("Choose…")) { choosePath(directory: true) { item.workingDirectory = $0 } }
                         }
+                        Toggle(L("Allow Multiple Instances"), isOn: $item.allowsMultipleInstances)
+                        Text(item.allowsMultipleInstances
+                             ? L("Run this script again while other instances are running. Each instance has its own window and output.")
+                             : L("Only one instance of this script can run in this workspace. Manual runs and scheduled tasks share this limit."))
+                            .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
                         Toggle(L("Interactive UI"), isOn: $item.interactiveUI)
                         if item.interactiveUI {
                             Text(L("Scripts control a native panel using JSON. Interactive UI requires a manual run."))

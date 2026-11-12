@@ -7,10 +7,20 @@ enum SidebarSelection: Hashable {
     case script(String)
 }
 
+enum SidebarLayout {
+    static let horizontalInset: CGFloat = 12
+    static let contentInset: CGFloat = 8
+    static let itemSpacing: CGFloat = 6
+    static let controlHeight: CGFloat = 32
+    static let rowContentHeight: CGFloat = 28
+    static let rowVerticalInset: CGFloat = 2
+    static let indentation: CGFloat = 18
+}
+
 extension RunnerView {
     var sidebar: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 7) {
+            HStack(spacing: SidebarLayout.itemSpacing) {
                 WorkspaceSymbol("magnifyingglass").foregroundStyle(.secondary)
                 TextField(L("Search scripts"), text: $search).textFieldStyle(.plain)
                     .focused($searchFocused)
@@ -21,23 +31,25 @@ extension RunnerView {
                         .buttonStyle(.plain).foregroundStyle(.secondary).accessibilityLabel(L("Clear search"))
                 }
             }
-            .font(WorkspaceTypography.body).padding(9)
+            .font(WorkspaceTypography.body)
+            .padding(.horizontal, SidebarLayout.contentInset)
+            .frame(height: SidebarLayout.controlHeight)
             .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 9))
-            .padding(.horizontal, 12).padding(.top, 10).padding(.bottom, 6)
+            .padding(.horizontal, SidebarLayout.horizontalInset).padding(.top, 10).padding(.bottom, 6)
             .help(L("Search names, groups, or paths"))
-            HStack(spacing: 2) {
+            HStack(spacing: 4) {
                 workspaceMenu
                     .layoutPriority(-1)
                 Button { beginFolderCreation() } label: { WorkspaceSymbol("folder.badge.plus", size: .toolbar) }
-                    .buttonStyle(WorkspaceIconButtonStyle()).foregroundStyle(.secondary)
+                    .buttonStyle(WorkspaceIconButtonStyle(targetSize: SidebarLayout.controlHeight)).foregroundStyle(.secondary)
                     .help(L("New Folder")).accessibilityLabel(L("New Folder"))
                     .disabled(store.directoryURL == nil || store.configurationIssue != nil)
                 Button { openEditor(ScriptItem()) } label: { WorkspaceSymbol("plus", size: .toolbar) }
-                    .buttonStyle(WorkspaceIconButtonStyle()).foregroundStyle(.secondary)
+                    .buttonStyle(WorkspaceIconButtonStyle(targetSize: SidebarLayout.controlHeight)).foregroundStyle(.secondary)
                     .help(L("New Script")).accessibilityLabel(L("New Script"))
                     .disabled(store.directoryURL == nil || store.configurationIssue != nil)
             }
-            .padding(.horizontal, 12).padding(.bottom, 4)
+            .padding(.horizontal, SidebarLayout.horizontalInset).padding(.bottom, 6)
             List(selection: sidebarSelection) {
                 ForEach(sidebarRows) { row in
                     switch row.content {
@@ -47,7 +59,13 @@ extension RunnerView {
                         scriptRow(item, depth: row.depth)
                     }
                 }
-            }.listStyle(.sidebar).scrollContentBackground(.hidden)
+                .listRowInsets(EdgeInsets(top: SidebarLayout.rowVerticalInset,
+                                         leading: SidebarLayout.contentInset,
+                                         bottom: SidebarLayout.rowVerticalInset,
+                                         trailing: SidebarLayout.contentInset))
+                .listRowSeparator(.hidden)
+            }.listStyle(.plain).scrollContentBackground(.hidden)
+                .environment(\.defaultMinListRowHeight, SidebarLayout.controlHeight)
                 .workspaceListAppearance()
                 .workspaceAnimation(value: expandedGroups, motion: .layout)
                 .frame(minHeight: 0, maxHeight: .infinity)
@@ -64,8 +82,8 @@ extension RunnerView {
                 Button(L("New Folder…"), systemImage: "folder.badge.plus") { beginFolderCreation() }
                     .disabled(store.directoryURL == nil || store.configurationIssue != nil)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            .padding(.horizontal, SidebarLayout.horizontalInset)
+            .padding(.bottom, 4)
             HStack(spacing: 6) {
                 WorkspaceSymbol(store.configurationIssue == nil ? "folder" : "exclamationmark.triangle")
                 Text(L("{0} scripts", "\(store.items.count)"))
@@ -73,7 +91,8 @@ extension RunnerView {
                 libraryMenu.buttonStyle(.plain)
             }
             .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
-            .padding(.horizontal, 16).padding(.vertical, 10)
+            .padding(.horizontal, SidebarLayout.horizontalInset + SidebarLayout.contentInset)
+            .padding(.vertical, 10)
         }
         .frame(maxHeight: .infinity)
         .contentShape(Rectangle())
@@ -139,17 +158,25 @@ extension RunnerView {
     }
 
     func scriptRow(_ item: ScriptItem, depth: Int) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: SidebarLayout.itemSpacing) {
             WorkspaceSymbol("terminal").foregroundStyle(.secondary)
             Text(item.name).font(WorkspaceTypography.body).lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 0)
-            if isActive(item) { ProgressView().controlSize(.small) }
+            let count = runner.activeSessions(workspaceID: workspaceInfo.id, scriptID: item.id).count
+            if count > 0 {
+                Text("\(count)").font(WorkspaceTypography.caption.monospacedDigit()).foregroundStyle(.orange)
+                    .help(L("{0} instances running", "\(count)"))
+            }
         }
-        .padding(.leading, CGFloat(depth) * 18)
-        .frame(minHeight: 30)
+        .padding(.leading, CGFloat(depth) * SidebarLayout.indentation)
+        .frame(maxWidth: .infinity, minHeight: SidebarLayout.rowContentHeight, alignment: .leading)
+        .contentShape(Rectangle())
         .tag(SidebarSelection.script(item.id)).help(item.path)
         .workspaceListSelection(sidebarSelection.wrappedValue == .script(item.id))
         .contextMenu {
+            ForEach(runner.activeSessions(workspaceID: workspaceInfo.id, scriptID: item.id)) { instance in
+                Button(L("Open {0}", instance.instanceLabel)) { runner.showExecution(instance) }
+            }
             Button(L("Edit")) { openEditor(item) }.disabled(isActive(item))
             Button(L("Show in Finder")) { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: store.resolved(item).path)]) }
             Button(L("Remove"), role: .destructive) { deleteItem = item }.disabled(isActive(item))
@@ -159,7 +186,7 @@ extension RunnerView {
     func folderRow(_ group: ScriptGroup, depth: Int) -> some View {
         let empty = isFolderEmpty(group.id)
         let expanded = isFolderExpanded(group.id)
-        return HStack(spacing: 6) {
+        return HStack(spacing: SidebarLayout.itemSpacing) {
             SidebarFolderIcon(isEmpty: empty, isExpanded: expanded)
             Text(group.displayName).font(WorkspaceTypography.bodyStrong).lineLimit(1).truncationMode(.middle)
             Spacer(minLength: 0)
@@ -168,8 +195,8 @@ extension RunnerView {
                 .foregroundStyle(.tertiary)
                 .fixedSize()
         }
-        .padding(.leading, CGFloat(depth) * 18)
-        .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+        .padding(.leading, CGFloat(depth) * SidebarLayout.indentation)
+        .frame(maxWidth: .infinity, minHeight: SidebarLayout.rowContentHeight, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture {
             sidebarSelection.wrappedValue = .folder(group.id)

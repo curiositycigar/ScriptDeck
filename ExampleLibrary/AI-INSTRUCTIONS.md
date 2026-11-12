@@ -15,13 +15,14 @@ Write scripts in `scripts/` and configure them in `library.json`. ScriptDeck det
 9. Select options can be objects such as `{"label":"Production","value":"production"}` or strings. The app displays labels and passes values. Values must be nonempty and unique; a `select` default must match an option value. Use `editableSelect` for a text field with a preset menu: it requires options but accepts custom input and custom defaults. Selecting a preset passes its value; typed text is passed unchanged.
 10. Use `passing: "named"` with `argumentName: "--output"` for named arguments. `argumentFormat` is `separated` (default) or `equals`. Use `passing: "flag"` for a switch that passes only its name when enabled; its default is `true`, `false`, or empty.
 11. Return zero on success and nonzero on failure. Print useful progress, flush output for long tasks, and quote arguments correctly. Do not store passwords in defaults or print them in logs.
-12. Do not automatically execute scripts after editing configuration. The user chooses when to run them in the app.
+12. Set "allowsMultipleInstances": true only when parallel executions of this script are intended. Omitted or false allows one running instance per workspace and script across manual runs and schedules. Existing schedules read the latest source library policy.
+13. Do not automatically execute scripts after editing configuration. The user chooses when to run them in the app.
 
 Example request:
 
 > Add a log archival script in Operations/Logs with a folder picker and a compression selection defaulting to gzip. Update library.json without running the script.
 
-The app automatically saves execution output under `logs/<script filename>/` beside each script, retaining the filename extension. Do not duplicate the app's logging infrastructure. Use **History** in the output panel to inspect each run.
+The app automatically saves execution output under `logs/<script filename>/` beside each script, retaining the filename extension. Do not duplicate the app's logging infrastructure. Use **Logs** in the main navigation to inspect each run.
 
 ## Private configuration
 

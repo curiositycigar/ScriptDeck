@@ -25,6 +25,8 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("scriptdeck-tests-\(UUID())")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
+        setenv("SCRIPTDECK_INSTANCE_ROOT", root.appendingPathComponent("instance-locks").path, 1)
+        defer { unsetenv("SCRIPTDECK_INSTANCE_ROOT") }
         if ProcessInfo.processInfo.environment["RUNNER_TEST_NAVIGATION_ONLY"] == "1" {
             try runNavigationSelfTests(root: root)
             print("导航检查通过。")
@@ -34,6 +36,8 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
             try checkInteractiveAdaptiveLayout()
             return
         }
+        try runScriptInstanceSelfTests(root: root)
+        if ProcessInfo.processInfo.environment["RUNNER_TEST_INSTANCES_ONLY"] == "1" { return }
         try runInteractiveUISelfTests(root: root)
         try checkHiddenInputNotice(root: root)
         try checkInteractiveAdaptiveLayout()
@@ -178,6 +182,8 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         printf 'ready:%s\\n' "$1"
         read -r value
         printf 'reply:%s:%s\\n' "$1" "$value"
+        read -r followup
+        printf 'resumed:%s:%s\\n' "$1" "$followup"
         sleep 30
         """.write(to: concurrentScript, atomically: true, encoding: .utf8)
         let concurrent = ProcessRunner()
@@ -196,42 +202,43 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         secondSession.terminalView.process.send(data: Array("two\n".utf8)[...])
         pump(until: { firstSession.output.contains("reply:alpha:one") && secondSession.output.contains("reply:beta:two") })
         check(!firstSession.output.contains("reply:beta") && !secondSession.output.contains("reply:alpha"), "并发终端的输入输出互不串流")
-        let uiSuite = "ScriptDeck.UITests.\(UUID())"
-        let uiPreferences = UserDefaults(suiteName: uiSuite)!
-        defer { uiPreferences.removePersistentDomain(forName: uiSuite) }
-        let uiWorkspaces = WorkspaceStore(preferences: uiPreferences)
-        let outputHost = NSHostingView(rootView: TaskOutputView(runner: concurrent, workspaces: uiWorkspaces, outputExpanded: .constant(true)))
-        let outputWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 900, height: 340), styleMask: [.titled, .resizable], backing: .buffered, defer: false)
-        outputWindow.contentView = outputHost
-        outputHost.layoutSubtreeIfNeeded()
-        pump(until: { firstSession.terminalView.superview != nil })
-        check(secondSession.terminalView.superview == nil, "仅挂载所选终端，隐藏会话持续执行")
-        concurrent.select(secondSession.id)
-        check(concurrent.terminalView === secondSession.terminalView && concurrent.output == secondSession.output, "选择任务切换对应终端及导出内容")
-        pump(until: { secondSession.terminalView.superview != nil && firstSession.terminalView.superview == nil })
-        check(secondSession.output.contains("reply:beta:two") && firstSession.isRunning, "原生输出面板切换终端后保留缓冲区及后台执行")
-        let terminalHost = secondSession.terminalView.superview
-        for index in 0..<30 {
-            let selected = index.isMultiple(of: 2) ? firstSession : secondSession
-            let hidden = index.isMultiple(of: 2) ? secondSession : firstSession
-            concurrent.select(selected.id)
-            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
-            outputHost.layoutSubtreeIfNeeded()
-            check(selected.terminalView.superview === terminalHost && selected.terminalView.window === outputWindow &&
-                  hidden.terminalView.superview == nil,
-                  "Repeated record switches keep the selected terminal in the same visible host")
-            check(selected.output.contains(index.isMultiple(of: 2) ? "reply:alpha:one" : "reply:beta:two"),
-                  "Repeated record switches preserve each session's output buffer")
-        }
-        outputWindow.setContentSize(NSSize(width: 680, height: 300))
+        concurrent.showExecution(firstSession)
+        concurrent.showExecution(secondSession)
+        pump(until: { firstSession.terminalView.window != nil && secondSession.terminalView.window != nil })
+        let firstWindow = firstSession.terminalView.window!
+        let secondWindow = secondSession.terminalView.window!
+        check(firstWindow !== secondWindow, "Concurrent runs own separate execution windows")
+        firstWindow.close()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        check(!firstWindow.isVisible && firstSession.isRunning && secondSession.isRunning,
+              "Closing an execution window preserves both running sessions")
+        let originalTerminal = firstSession.terminalView
+        firstSession.terminalView.process.send(data: Array("after-close\n".utf8)[...])
+        pump(until: { firstSession.output.contains("resumed:alpha:after-close") })
+        check(!firstWindow.isVisible, "Closed windows keep collecting new output without reopening")
+        concurrent.showExecution(firstSession)
+        pump(until: { firstWindow.isVisible })
+        check(firstSession.terminalView === originalTerminal && firstSession.terminalView.window === firstWindow,
+              "Reopening restores the original execution window and terminal")
+        check(firstSession.output.contains("reply:alpha:one") && firstSession.output.contains("resumed:alpha:after-close"),
+              "Reopened windows retain output from before and after closing")
+        concurrent.showExecution(firstSession)
+        check(firstSession.terminalView.window === firstWindow, "Repeated open requests reuse one window per run")
+        secondWindow.setContentSize(NSSize(width: 680, height: 420))
         RunLoop.current.run(until: Date().addingTimeInterval(0.15))
-        outputHost.layoutSubtreeIfNeeded()
-        check(secondSession.terminalView.bounds.width >= 300, "窄窗口中任务列表与终端保留可用宽度")
+        secondWindow.contentView?.layoutSubtreeIfNeeded()
+        check(secondSession.terminalView.bounds.width >= 600, "Execution terminals fit the minimum window width")
         if ProcessInfo.processInfo.environment["RUNNER_CAPTURE_UI"] == "1",
+           let outputHost = secondWindow.contentView,
            let bitmap = outputHost.bitmapImageRepForCachingDisplay(in: outputHost.bounds) {
             outputHost.cacheDisplay(in: outputHost.bounds, to: bitmap)
-            try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "/tmp/scriptdeck-multisession.png"))
+            try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "/tmp/scriptdeck-execution.png"))
         }
+        concurrent.select(firstSession.id)
+        secondSession.stop()
+        pump(until: { !secondSession.isRunning })
+        check(firstSession.isRunning, "Stopping a bound session works while a different session is selected")
+        concurrent.select(secondSession.id)
         concurrent.stop()
         pump(until: { !secondSession.isRunning })
         check(firstSession.isRunning && concurrent.isRunning && !concurrent.selectedIsRunning, "停止所选任务不会停止其他任务，全局仍报告运行中")

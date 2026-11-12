@@ -229,6 +229,11 @@
           "deprecated": true,
           "description": "Deprecated compatibility field. All manual scripts use the embedded interactive terminal; this field no longer affects execution."
         },
+        "allowsMultipleInstances": {
+          "type": "boolean",
+          "default": false,
+          "description": "Allow parallel executions of this script within one workspace. False shares a single-instance limit across manual and scheduled runs."
+        },
         "interactiveUI": {
           "type": "boolean",
           "default": false,

@@ -24,7 +24,7 @@ import Foundation
                               ScriptParameter(id: "text", name: "Text", defaultValue: "Saved"),
                               ScriptParameter(id: "file", name: "File", kind: .file, defaultValue: externalFile.path)
                           ])
-    let external = ScriptItem(name: "External", path: externalFile.path)
+    let external = ScriptItem(name: "External", path: externalFile.path, allowsMultipleInstances: true)
     check(store.upsert(item) && store.upsert(external), "Prepare internal and external script references for export")
     let packageURL = root.appendingPathComponent("Shared.scriptdeck")
     let package = try WorkspaceTransfer(store: store, values: [item.id: ["text": "Current 中文"]])
@@ -45,6 +45,8 @@ import Foundation
     check(script.parameters[0].defaultValue == "Current 中文" && script.parameters[1].defaultValue.isEmpty
           && store.items[0].parameters[0].defaultValue == "Saved",
           "Current values become imported defaults, while external input paths are cleared and the source is unchanged")
+    check(imported.items[1].allowsMultipleInstances && !imported.items[0].allowsMultipleInstances,
+          "Workspace packages preserve each script's instance policy")
     let externalCopy = imported.resolved(imported.items[1]).path
     check(externalCopy.hasPrefix(destination.path + "/") && manager.fileExists(atPath: externalCopy),
           "An explicitly registered external script is copied into the imported workspace")

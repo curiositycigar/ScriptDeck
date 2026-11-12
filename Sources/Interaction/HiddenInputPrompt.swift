@@ -32,7 +32,7 @@ enum HiddenInputSubmission {
         try runner.validateCredentialTarget(sessionID)
         let secret = credentialID.isEmpty ? password : try await store.password(for: credentialID)
         try Task.checkCancellation()
-        // Revalidates the selected execution and ECHO after any Keychain access.
+        // Revalidates the bound execution and ECHO after any Keychain access.
         try await runner.fillPassword(secret, sessionID: sessionID, appendReturn: appendReturn)
     }
 }
@@ -95,7 +95,7 @@ struct HiddenInputPrompt: View {
                 Button(filling ? L("Filling…") : L("Send"), action: send)
                     .keyboardShortcut(.defaultAction)
                     .disabled((credentialID.isEmpty ? password.isEmpty : !store.items.contains { $0.id == credentialID }) ||
-                              runner.selectedSessionID != session.id || !session.needsHiddenInputNotice)
+                              !session.needsHiddenInputNotice)
             }
         }
         .font(WorkspaceTypography.body).padding(20).frame(width: 420)

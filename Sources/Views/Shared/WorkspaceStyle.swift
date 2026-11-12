@@ -56,6 +56,28 @@ struct WorkspaceIconButtonStyle: ButtonStyle {
     }
 }
 
+/// A persistent affordance for the workspace selector, separate from adjacent actions.
+struct WorkspaceSwitcherButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Switcher(configuration: configuration)
+    }
+
+    private struct Switcher: View {
+        let configuration: ButtonStyle.Configuration
+        @State private var hovered = false
+
+        var body: some View {
+            configuration.label
+                .background(Color.primary.opacity(configuration.isPressed ? 0.12 : hovered ? 0.08 : 0.04),
+                            in: RoundedRectangle(cornerRadius: 6))
+                .contentShape(RoundedRectangle(cornerRadius: 6))
+                .onHover { hovered = $0 }
+                .workspaceAnimation(value: hovered)
+                .workspaceAnimation(value: configuration.isPressed)
+        }
+    }
+}
+
 // Navigation, actions, and readable content use solid semantic system surfaces.
 extension View {
     func workspaceListSelection(_ selected: Bool) -> some View {

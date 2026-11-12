@@ -5,6 +5,7 @@
   ],
   "scripts" : [
     {
+      "allowsMultipleInstances" : false,
       "cwd" : ".",
       "description" : "Demonstrates separate option labels and values. Only prints selected arguments; does not connect to servers or change files.",
       "file" : "scripts/show-options.sh",
@@ -79,6 +80,7 @@
       ]
     },
     {
+      "allowsMultipleInstances" : false,
       "description" : "Try text input, hidden input, confirmation, and progress updates without connecting to remote services.",
       "file" : "scripts/interactive-demo.sh",
       "group" : "Examples/Interaction",
@@ -90,6 +92,7 @@
       ]
     },
     {
+      "allowsMultipleInstances" : true,
       "description" : "Try basic native controls, file and directory selection, simulated progress, and fictional file management. No network connections or real file changes.",
       "file" : "scripts/interactive-demo.sh",
       "group" : "Examples/Interaction",
@@ -97,7 +100,9 @@
       "interactiveUI" : true,
       "interpreter" : "/bin/bash",
       "name" : "Interactive UI Demo",
-      "parameters" : []
+      "parameters" : [
+
+      ]
     }
   ],
   "version" : 1

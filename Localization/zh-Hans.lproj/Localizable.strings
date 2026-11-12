@@ -555,3 +555,60 @@
 "Send" = "发送";
 
 "Enter Hidden Input…" = "输入隐藏内容…";
+
+"Add scripts to Favorites using the star beside a script's name." = "点击脚本名称旁的星标，将脚本添加到常用脚本。";
+"Add to Favorites" = "添加到常用脚本";
+"Browse Scripts" = "浏览脚本";
+"Check library.json. If the folder has moved, relocate it in workspace management." = "请检查 library.json。如果文件夹已移动，请在工作空间管理中重新定位。";
+"Configure & Run" = "配置并运行";
+"Copy Log" = "复制日志";
+"Elapsed" = "已用时";
+"Export Log" = "导出日志";
+"Favorite Actions" = "常用脚本操作";
+"Favorite Scripts" = "常用脚本";
+"Home" = "首页";
+"Logs" = "日志";
+"Manual Task" = "手动任务";
+"Navigation" = "导航";
+"No upcoming scheduled tasks" = "暂无已安排的定时任务";
+"Open Script" = "打开脚本";
+"Open the execution window to view progress, or run again" = "打开执行窗口查看进度，或再次运行";
+"Open the workspace to check this script." = "打开工作空间检查此脚本。";
+"Remove from Favorites" = "从常用脚本移除";
+"Running Tasks" = "执行中任务";
+"Scheduled Task" = "定时任务";
+"Script Unavailable" = "脚本不可用";
+"The target terminal is no longer accepting input." = "目标终端已无法接收输入。";
+"Upcoming Scheduled Tasks" = "已安排的定时任务";
+"View All" = "查看全部";
+
+"All Logs" = "全部日志";
+
+"Allow Multiple Instances" = "允许多实例";
+"Run this script again while other instances are running. Each instance has its own window and output." = "允许在其他实例运行时再次执行。每个实例拥有独立窗口和输出。";
+"Only one instance of this script can run in this workspace. Manual runs and scheduled tasks share this limit." = "此脚本在当前工作空间内同时只能运行一个实例。手动执行和定时任务共同遵守此限制。";
+"Unable to acquire the script instance lock." = "无法获取脚本实例锁。";
+"This script already has a running instance. Open its current instance to view progress." = "此脚本已有运行中的实例，请打开当前实例查看进度。";
+"Instance {0}" = "实例 {0}";
+"Instances ({0})" = "实例（{0}）";
+"View Current Instance" = "查看当前实例";
+"Running Instances" = "运行中的实例";
+"Started {0}" = "开始于 {0}";
+"{0} instances running" = "{0} 个实例运行中";
+"Run Another Instance" = "再次运行";
+"Open {0}" = "打开{0}";
+
+"Execution Details" = "执行详情";
+
+"Instance ID" = "实例 ID";
+
+"Execution Source" = "执行来源";
+
+"Start Time" = "开始时间";
+
+"End Time" = "结束时间";
+
+"Status" = "状态";
+
+"Drop files here" = "将文件拖到此处";
+"Drop folders here" = "将文件夹拖到此处";
