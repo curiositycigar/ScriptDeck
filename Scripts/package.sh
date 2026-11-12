@@ -27,9 +27,7 @@ for ENTRY in ExampleLibrary Docs README.md README.zh-CN.md; do
 done
 ditto -c -k --sequesterRsrc --keepParent "$RELEASE" "$ROOT/dist/ScriptDeck-$VERSION.zip"
 unzip -tq "$ROOT/dist/ScriptDeck-$VERSION.zip"
-hdiutil create -volname "ScriptDeck $VERSION" -srcfolder "$DMG_ROOT" \
-    -fs HFS+ -format UDZO -ov "$ROOT/dist/ScriptDeck-$VERSION.dmg"
-hdiutil verify "$ROOT/dist/ScriptDeck-$VERSION.dmg"
+bash "$ROOT/Scripts/make-dmg.sh" "$DMG_ROOT" "$ROOT/dist/ScriptDeck-$VERSION.dmg" "$VERSION"
 (
     cd "$ROOT/dist"
     for EXTENSION in zip dmg; do

@@ -106,7 +106,7 @@ Schedule definitions and the standalone helper live in `~/Library/Application Su
 
 ## Build
 
-Use Xcode or Command Line Tools with Swift 6.3 or later. Dependencies are pinned in `Package.resolved`; the first build needs network access.
+Use Xcode or Command Line Tools with Swift 6.3 or later. Swift dependencies are pinned in `Package.resolved`; the first build needs network access. DMG packaging also requires Python 3 with pip and installs the pinned tools from `Scripts/dmg-requirements.txt` into `.build/dmg-python` on first use. Installer layout settings live in `Scripts/dmg-settings.py`.
 
 ```bash
 bash package.sh  # Build, ad hoc sign, and create release ZIP and DMG files

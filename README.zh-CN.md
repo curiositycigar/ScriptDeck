@@ -106,7 +106,7 @@ MyScripts/
 
 ## 构建
 
-使用 Xcode 或带有 Swift 6.3 及以上版本的 Command Line Tools。依赖版本固定在 `Package.resolved` 中，首次构建需要联网。
+使用 Xcode 或带有 Swift 6.3 及以上版本的 Command Line Tools。Swift 依赖版本固定在 `Package.resolved` 中，首次构建需要联网。DMG 打包还需要带有 pip 的 Python 3，首次使用时会将 `Scripts/dmg-requirements.txt` 中固定版本的工具安装到 `.build/dmg-python`。安装窗口布局配置位于 `Scripts/dmg-settings.py`。
 
 ```bash
 bash package.sh  # 构建、临时签名并生成发布 ZIP 和 DMG
