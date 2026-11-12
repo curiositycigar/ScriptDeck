@@ -10,7 +10,7 @@
 
 DMG 的 **Extras** 文件夹中包含示例脚本库和文档。请先将 `Extras/ExampleLibrary` 复制到“文稿”等可写文件夹，再添加为工作区。每个下载文件均附带 `.sha256` 校验文件。
 
-- 需要 macOS 13 或更高版本。目前发布的二进制版本支持 Apple Silicon（arm64）。
+- 需要 macOS 13 或更高版本。Apple Silicon Mac 下载 `arm64` 版，Intel Mac 下载 `x86_64` 版。没有架构后缀的旧版安装包适用于 Apple Silicon。
 - 应用使用临时签名，尚未经过 Apple 公证。如果 macOS 阻止打开，请在**系统设置 → 隐私与安全性**中检查并允许打开。
 - 请自行安装脚本所需的运行环境，例如 Python 或 Node.js。
 
@@ -109,11 +109,12 @@ MyScripts/
 使用 Xcode 或带有 Swift 6.3 及以上版本的 Command Line Tools。Swift 依赖版本固定在 `Package.resolved` 中，首次构建需要联网。DMG 打包还需要带有 pip 的 Python 3，首次使用时会将 `Scripts/dmg-requirements.txt` 中固定版本的工具安装到 `.build/dmg-python`。安装窗口布局配置位于 `Scripts/dmg-settings.py`。
 
 ```bash
-bash package.sh  # 构建、临时签名并生成发布 ZIP 和 DMG
+bash package.sh arm64   # 打包 Apple Silicon 版
+bash package.sh x86_64  # 打包 Intel 版
 bash test.sh     # 使用临时脚本运行自检
 ```
 
-输出为 `dist/ScriptDeck.app`、`dist/ScriptDeck-<version>.zip` 和 `dist/ScriptDeck-<version>.dmg`，两种归档均附带 `.sha256` 校验文件。DMG 提供 Applications 快捷方式以便拖拽安装，配套文件放在 Extras 中。发布包包含应用、示例脚本库、中英文 README 和英文维护文档。打包不会运行脚本或安装定时任务。
+`bash package.sh` 默认使用当前机器的架构。打包后的应用位于 `dist/<arch>/ScriptDeck.app`，归档为 `dist/ScriptDeck-<version>-<arch>.zip` 和 `dist/ScriptDeck-<version>-<arch>.dmg`，两种归档均附带 `.sha256` 校验文件。只构建应用时，`bash build.sh` 将本机架构的应用写入 `dist/ScriptDeck.app`，`bash build.sh <arch>` 将指定架构的应用写入 `dist/<arch>/ScriptDeck.app`。DMG 提供 Applications 快捷方式以便拖拽安装，配套文件放在 Extras 中。发布包包含应用、示例脚本库、中英文 README 和英文维护文档。打包不会运行脚本或安装定时任务。
 
 版本信息以 `Resources/Info.plist` 为准：`CFBundleShortVersionString` 为对外版本号，`CFBundleVersion` 为构建号。发布时手动更新两者，构建不会自动递增。构建时会将此文件复制到应用内，打包时使用对外版本号命名 ZIP 和 DMG。
 

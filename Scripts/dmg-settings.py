@@ -7,7 +7,7 @@ files = [os.path.join(source, name) for name in ("ScriptDeck.app", "Extras")]
 symlinks = {"Applications": "/Applications"}
 background = os.path.join(source, ".background", "installer.png")
 icon = os.path.join(defines["root"], "Assets", "AppIcon.icns")
-hide_extensions = ["ScriptDeck.app"]
+# Hiding the app extension writes FinderInfo to the signed bundle and breaks strict verification.
 default_view = "icon-view"
 include_icon_view_settings = True
 include_list_view_settings = False

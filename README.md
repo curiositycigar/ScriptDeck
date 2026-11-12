@@ -10,7 +10,7 @@ Download the latest DMG from [GitHub Releases](https://github.com/curiositycigar
 
 The DMG includes the example library and documentation in **Extras**. Copy `Extras/ExampleLibrary` to a writable folder, such as Documents, before adding it as a workspace. Each download includes a `.sha256` checksum file.
 
-- macOS 13 or later. Release binaries currently support Apple Silicon (arm64).
+- macOS 13 or later. Choose the `arm64` download for Apple Silicon or the `x86_64` download for Intel. Older releases without an architecture suffix are Apple Silicon builds.
 - The app is ad hoc signed and is not notarized by Apple. If macOS blocks it, review it in **System Settings → Privacy & Security** before opening.
 - Install any runtimes your scripts need, such as Python or Node.js.
 
@@ -109,11 +109,12 @@ Schedule definitions and the standalone helper live in `~/Library/Application Su
 Use Xcode or Command Line Tools with Swift 6.3 or later. Swift dependencies are pinned in `Package.resolved`; the first build needs network access. DMG packaging also requires Python 3 with pip and installs the pinned tools from `Scripts/dmg-requirements.txt` into `.build/dmg-python` on first use. Installer layout settings live in `Scripts/dmg-settings.py`.
 
 ```bash
-bash package.sh  # Build, ad hoc sign, and create release ZIP and DMG files
+bash package.sh arm64   # Package for Apple Silicon
+bash package.sh x86_64  # Package for Intel
 bash test.sh     # Run self-checks with temporary fixtures
 ```
 
-Outputs are `dist/ScriptDeck.app`, `dist/ScriptDeck-<version>.zip`, and `dist/ScriptDeck-<version>.dmg`, with a `.sha256` checksum file for each archive. The DMG provides an Applications shortcut for drag-to-install and places supporting files in Extras. Packaging includes the app, example library, both README languages, and English maintenance documentation. It does not launch scripts or install schedules.
+`bash package.sh` defaults to the host architecture. Packaging writes the app to `dist/<arch>/ScriptDeck.app` and creates `dist/ScriptDeck-<version>-<arch>.zip` and `dist/ScriptDeck-<version>-<arch>.dmg`, with a `.sha256` checksum file for each archive. For an app-only build, `bash build.sh` writes the host build to `dist/ScriptDeck.app`, and `bash build.sh <arch>` writes to `dist/<arch>/ScriptDeck.app`. The DMG provides an Applications shortcut for drag-to-install and places supporting files in Extras. Packaging includes the app, example library, both README languages, and English maintenance documentation. It does not launch scripts or install schedules.
 
 `Resources/Info.plist` is the version source: `CFBundleShortVersionString` is the public version and `CFBundleVersion` is the build number. Update both manually for a release; building does not increment either value. The build copies this file into the app, and packaging uses the public version in the ZIP and DMG filenames.
 
