@@ -6,7 +6,9 @@
 
 ## 安装
 
-从 [GitHub Releases](https://github.com/curiositycigar/ScriptDeck/releases/latest) 下载最新 ZIP，解压后将 **ScriptDeck.app** 移至“应用程序”文件夹。
+从 [GitHub Releases](https://github.com/curiositycigar/ScriptDeck/releases/latest) 下载最新 DMG，打开后将 **ScriptDeck.app** 拖到 **Applications（应用程序）**。复制完成后推出磁盘映像。也可选择下载 ZIP。
+
+DMG 的 **Extras** 文件夹中包含示例脚本库和文档。请先将 `Extras/ExampleLibrary` 复制到“文稿”等可写文件夹，再添加为工作区。每个下载文件均附带 `.sha256` 校验文件。
 
 - 需要 macOS 13 或更高版本。目前发布的二进制版本支持 Apple Silicon（arm64）。
 - 应用使用临时签名，尚未经过 Apple 公证。如果 macOS 阻止打开，请在**系统设置 → 隐私与安全性**中检查并允许打开。
@@ -107,12 +109,12 @@ MyScripts/
 使用 Xcode 或带有 Swift 6.3 及以上版本的 Command Line Tools。依赖版本固定在 `Package.resolved` 中，首次构建需要联网。
 
 ```bash
-bash package.sh  # 构建、临时签名并生成发布 ZIP
+bash package.sh  # 构建、临时签名并生成发布 ZIP 和 DMG
 bash test.sh     # 使用临时脚本运行自检
 ```
 
-输出为 `dist/ScriptDeck.app` 和 `dist/ScriptDeck-<version>.zip`。发布包包含应用、示例脚本库、中英文 README 和英文维护文档。打包不会运行脚本或安装定时任务。
+输出为 `dist/ScriptDeck.app`、`dist/ScriptDeck-<version>.zip` 和 `dist/ScriptDeck-<version>.dmg`，两种归档均附带 `.sha256` 校验文件。DMG 提供 Applications 快捷方式以便拖拽安装，配套文件放在 Extras 中。发布包包含应用、示例脚本库、中英文 README 和英文维护文档。打包不会运行脚本或安装定时任务。
 
-版本信息以 `Resources/Info.plist` 为准：`CFBundleShortVersionString` 为对外版本号，`CFBundleVersion` 为构建号。发布时手动更新两者，构建不会自动递增。构建时会将此文件复制到应用内，打包时使用对外版本号命名 ZIP。
+版本信息以 `Resources/Info.plist` 为准：`CFBundleShortVersionString` 为对外版本号，`CFBundleVersion` 为构建号。发布时手动更新两者，构建不会自动递增。构建时会将此文件复制到应用内，打包时使用对外版本号命名 ZIP 和 DMG。
 
 维护与测试说明见[架构文档（英文）](Docs/Architecture.md)，翻译规则见[本地化文档（英文）](Docs/Localization.md)，图标资源说明见[图标设计（英文）](Docs/Icon-design.md)，字号、图标尺寸和分组规范见[界面规范（英文）](Docs/Interface-guidelines.md)。

@@ -6,7 +6,9 @@ A native macOS app for organizing local scripts, running parallel interactive se
 
 ## Install
 
-Download the latest ZIP from [GitHub Releases](https://github.com/curiositycigar/ScriptDeck/releases/latest), extract it, and move **ScriptDeck.app** to Applications.
+Download the latest DMG from [GitHub Releases](https://github.com/curiositycigar/ScriptDeck/releases/latest), open it, and drag **ScriptDeck.app** onto **Applications**. Eject the disk image after copying. A ZIP download is also available.
+
+The DMG includes the example library and documentation in **Extras**. Copy `Extras/ExampleLibrary` to a writable folder, such as Documents, before adding it as a workspace. Each download includes a `.sha256` checksum file.
 
 - macOS 13 or later. Release binaries currently support Apple Silicon (arm64).
 - The app is ad hoc signed and is not notarized by Apple. If macOS blocks it, review it in **System Settings → Privacy & Security** before opening.
@@ -107,12 +109,12 @@ Schedule definitions and the standalone helper live in `~/Library/Application Su
 Use Xcode or Command Line Tools with Swift 6.3 or later. Dependencies are pinned in `Package.resolved`; the first build needs network access.
 
 ```bash
-bash package.sh  # Build, ad hoc sign, and create the release ZIP
+bash package.sh  # Build, ad hoc sign, and create release ZIP and DMG files
 bash test.sh     # Run self-checks with temporary fixtures
 ```
 
-Outputs are `dist/ScriptDeck.app` and `dist/ScriptDeck-<version>.zip`. Packaging includes the app, example library, both README languages, and English maintenance documentation. It does not launch scripts or install schedules.
+Outputs are `dist/ScriptDeck.app`, `dist/ScriptDeck-<version>.zip`, and `dist/ScriptDeck-<version>.dmg`, with a `.sha256` checksum file for each archive. The DMG provides an Applications shortcut for drag-to-install and places supporting files in Extras. Packaging includes the app, example library, both README languages, and English maintenance documentation. It does not launch scripts or install schedules.
 
-`Resources/Info.plist` is the version source: `CFBundleShortVersionString` is the public version and `CFBundleVersion` is the build number. Update both manually for a release; building does not increment either value. The build copies this file into the app, and packaging uses the public version in the ZIP filename.
+`Resources/Info.plist` is the version source: `CFBundleShortVersionString` is the public version and `CFBundleVersion` is the build number. Update both manually for a release; building does not increment either value. The build copies this file into the app, and packaging uses the public version in the ZIP and DMG filenames.
 
 See [Architecture](Docs/Architecture.md) for maintenance and testing, [Localization](Docs/Localization.md) for translations, [Icon Design](Docs/Icon-design.md) for icon assets, and [Interface Guidelines](Docs/Interface-guidelines.md) for typography, symbol sizes, and grouping.
