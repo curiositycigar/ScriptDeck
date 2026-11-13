@@ -52,6 +52,16 @@ struct InteractiveView: Codable, Equatable {
                 guard !ids.contains(""), Set(ids).count == ids.count else { throw InteractiveProtocolError.invalid }
             }
         }
+        for block in blocks {
+            if let target = block.filenameTarget {
+                guard block.type == .file, block.mode != .directory, block.multiple != true,
+                      blocks.contains(where: { $0.id == target && $0.type == .input && $0.secure != true }) else {
+                    throw InteractiveProtocolError.invalid
+                }
+            } else if block.filenameStripSuffix != nil {
+                throw InteractiveProtocolError.invalid
+            }
+        }
         let listIDs = Set(blocks.filter { $0.type == .list }.compactMap(\.id))
         for item in blocks.filter({ $0.type == .buttons }).flatMap({ $0.items ?? [] }) {
             if let id = item.requiresSelection, !listIDs.contains(id) { throw InteractiveProtocolError.invalid }
@@ -91,6 +101,8 @@ struct InteractiveBlock: Codable, Equatable {
     enum Region: String, Codable { case header, body, footer }
     var region: Region?
     var reset: Bool? = nil
+    var filenameTarget: String? = nil
+    var filenameStripSuffix: String? = nil
 }
 
 struct InteractiveItem: Codable, Equatable {

@@ -101,7 +101,7 @@ private struct InteractiveFormControl: View {
                     HStack(spacing: InteractivePanelMetrics.actionSpacing) {
                         Button(L("Choose…"), action: chooseFiles).buttonStyle(.bordered)
                         if !channel.selections[id, default: []].isEmpty {
-                            Button(L("Clear")) { channel.selections[id] = [] }.buttonStyle(.bordered)
+                            Button(L("Clear")) { channel.clearFiles(controlID: id, requestID: requestID) }.buttonStyle(.bordered)
                         }
                     }
                     Text(L(block.mode == .directory ? "Drop folders here" : "Drop files here"))

@@ -128,8 +128,30 @@ final class InteractiveChannel: ObservableObject {
             return isDirectory == (block.mode == .directory)
         }.map(\.path)
         guard !paths.isEmpty else { return false }
-        selections[controlID] = Set(block.multiple == true ? paths : Array(paths.prefix(1)))
+        updateFileSelection(block, id: controlID, paths: Set(block.multiple == true ? paths : Array(paths.prefix(1))))
         return true
+    }
+
+    func clearFiles(controlID: String, requestID: UUID) {
+        guard !ended, waiting, let request, request.id == requestID,
+              let block = request.view.blocks.first(where: { $0.type == .file && $0.id == controlID }) else { return }
+        updateFileSelection(block, id: controlID, paths: [])
+    }
+
+    private func updateFileSelection(_ block: InteractiveBlock, id: String, paths: Set<String>) {
+        func suggestedName(_ path: String?) -> String {
+            guard let path else { return "" }
+            let name = URL(fileURLWithPath: path).lastPathComponent
+            guard let suffix = block.filenameStripSuffix, !suffix.isEmpty, name.hasSuffix(suffix) else { return name }
+            return String(name.dropLast(suffix.count))
+        }
+        if let target = block.filenameTarget {
+            let current = inputs[target] ?? ""
+            if current.isEmpty || current == suggestedName(selections[id]?.first) {
+                inputs[target] = suggestedName(paths.first)
+            }
+        }
+        selections[id] = paths
     }
 
     func submit(_ data: String, values: [String: Set<String>], requestID: UUID) {
