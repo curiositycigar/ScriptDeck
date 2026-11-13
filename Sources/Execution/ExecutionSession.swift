@@ -183,6 +183,20 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         if !workspaceName.isEmpty { event(L("Workspace: {0}", workspaceName)) }
         event(L("Started: {0}", "\(item.name)"))
         event(L("Working directory: {0}", "\(command.directory)"))
+        let clientVersion = ScriptClientVersion.current
+        if item.interactiveUI {
+            do {
+                if let requirement = try ScriptClientVersion.requirement(at: item.path) {
+                    try ScriptClientVersion.check(requirement, current: clientVersion)
+                }
+            } catch {
+                showingTerminalLog = true
+                status = L("Failed to start")
+                event(L("Unable to start the task: {0}", error.localizedDescription))
+                complete(outcome: .launchFailed, exitCode: nil)
+                return
+            }
+        }
         // Keep arguments out of the application metadata; scripts may receive secrets.
         var environment = ProcessInfo.processInfo.environment
         environment["TERM"] = "xterm-256color"
@@ -192,6 +206,7 @@ final class ExecutionSession: NSObject, ObservableObject, Identifiable {
         environment.removeValue(forKey: "SCRIPTDECK_UI_SESSION")
         environment.removeValue(forKey: "SCRIPTDECK_UI")
         environment["SCRIPTDECK_LANGUAGE"] = L10n.language
+        environment["SCRIPTDECK_VERSION"] = clientVersion
         if let channel {
             environment["SCRIPTDECK_UI_SESSION"] = channel.directory.path
             environment["SCRIPTDECK_UI"] = executable

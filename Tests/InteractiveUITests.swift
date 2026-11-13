@@ -414,15 +414,28 @@ func checkInteractiveAdaptiveLayout() throws {
             InteractiveBlock(type: .input, id: "notes", label: "Notes", value: "First line\nSecond line", multiline: true),
             InteractiveBlock(type: .input, id: "secret", label: "Password", secure: true),
             InteractiveBlock(type: .file, id: "local", label: "Local files"),
-            InteractiveBlock(type: .select, id: "environment", items: [InteractiveItem(id: "test", text: "Test")], label: "Environment"),
+            InteractiveBlock(type: .select, id: "environment", items: (0..<12).map {
+                InteractiveItem(id: "option-\($0)", text: "Option \($0)", detail: "Environment description", disabled: $0 == 11)
+            }, label: "Environment"),
             InteractiveBlock(type: .toggle, id: "overwrite", label: "Overwrite"),
-            InteractiveBlock(type: .progress, label: "Progress", progress: 0.5),
+            InteractiveBlock(type: .progress, text: "2 of 4 complete", label: "Progress", progress: 0.5),
             InteractiveBlock(type: .progress, label: "Waiting"),
+            InteractiveBlock(type: .text, text: "Check your selection before deleting.", notice: .warning),
             InteractiveBlock(type: .list, id: "files", multiple: true, items: items),
+            InteractiveBlock(type: .text, text: "Recent tasks", section: true),
+            InteractiveBlock(type: .list, id: "tasks", items: [
+                InteractiveItem(id: "backup", text: "Backup task with a long name", cells: ["Storage", "24 s"], badge: .completed)
+            ], columns: ["Task", "Server", "Duration"]),
             InteractiveBlock(type: .buttons, items: ["Upload a new file", "Download selected files", "Delete selected files", "Refresh"].map {
                 InteractiveItem(text: $0, data: $0)
             })
         ])
+        let decoded = try InteractiveView.decode(JSONEncoder().encode(view))
+        check(decoded == view, "Section, table cells, and badges survive protocol transport")
+        var malformed = view
+        let tableIndex = malformed.blocks.firstIndex { $0.id == "tasks" }!
+        malformed.blocks[tableIndex].items?[0].cells = ["Storage"]
+        check((try? malformed.validate()) == nil, "Tables reject rows with mismatched column counts")
         let request = InteractiveRequest(id: UUID(), view: view)
         try JSONEncoder().encode(request).write(to: channel.directory.appendingPathComponent("request.json"), options: .atomic)
         channel.receive()

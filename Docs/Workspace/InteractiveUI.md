@@ -27,12 +27,60 @@ This capability responds to terminal ECHO state, not stdout text matching. A vis
 
 The protocol's `input` block with `secure: true` is a separate script-owned form field: its value is returned in the JSON callback. The automatic terminal dialog sends directly to the PTY and contributes nothing to callback `values`. Never print password values from either path.
 
+## Client version requirement
+
+If a manually run script uses features introduced in a newer ScriptDeck release,
+declare its supported client versions in the script header. For Shell and Python,
+use `# scriptdeck: version = >=1.14.0 <2.0.0`. For Node.js, use
+`// scriptdeck: version = >=1.14.0 <2.0.0`. Place the declaration after any
+shebang and language directives, in the initial run of blank lines and line
+comments, before executable code and within the first 8 KiB.
+
+Use full `major.minor.patch` release versions. A bare version is an exact match.
+The supported range operators are `=`, `>`, `>=`, `<`, `<=`, `^` and `~`.
+Separate constraints with spaces to require all of them. Use `||` for
+alternatives. For example, `^1.14.0` allows releases from 1.14.0 up to 2.0.0,
+and `~1.14.0` allows releases from 1.14.0 up to 1.15.0, with both upper bounds
+excluded. This syntax uses a subset of npm's range syntax.
+
+For scripts configured with `"interactiveUI": true`, supporting clients check
+the declaration before starting the interpreter and report a mismatch in
+Terminal Log. Scripts without a declaration can run as before.
+
+Older clients ignore this comment and do not set `SCRIPTDECK_VERSION`. If the
+script requires a client that supports this declaration, check for the
+environment variable before sending the first view or performing work, print
+the required version to stderr when it is absent, and exit with a nonzero
+status. For example, a Shell script targeting 1.14.0 and newer can use:
+
+```bash
+# scriptdeck: version = >=1.14.0
+if [ -z "${SCRIPTDECK_VERSION:-}" ]; then
+  printf '%s\n' 'This script requires ScriptDeck 1.14.0 or newer. Please upgrade and try again.' >&2
+  exit 1
+fi
+```
+
+Use the version of the first release that actually includes the required feature
+in place of these example versions.
+
+## Keyboard and focus
+
+Use Tab and Shift-Tab to move among available controls and Space to activate a
+focused list row or checkbox. The output selector uses the native macOS
+segmented control. In the Hidden Input dialog, Return sends valid input and
+Escape cancels. Use the Terminal Log button to return to terminal input.
+
+Assign stable IDs to inputs and keep the same `pageID` when refreshing a form
+in place so the client can retain focus on a compatible input.
+
 ## Exchange
 
 The environment provides:
 
 - `SCRIPTDECK_UI`: the absolute path to ScriptDeck's bundled executable.
 - `SCRIPTDECK_UI_SESSION`: the private mailbox for this execution. Treat this as opaque.
+- `SCRIPTDECK_VERSION`: the client version when available, for script-owned compatibility messages.
 - `SCRIPTDECK_LANGUAGE`: the app language (`en` or `zh-Hans`), available for script-owned labels.
 
 Invoke `"$SCRIPTDECK_UI" --ui`, write one JSON view to its standard input, and close that input. The helper renders the view, waits for a button click, then writes one JSON event to standard output and exits successfully. Without buttons, it returns immediately after the app accepts the view, with no output. This supports progress/status updates before slow operations. Each exchange supplies the complete panel content. Without `pageID`, form values and list selections reset; compatible file controls retain paths across consecutive views. With a nonempty `pageID`, compatible controls on consecutive views of the same page retain state unless explicitly assigned or reset. Changing or removing the page ID starts fresh. Stable block and button IDs allow in-place view reuse; omitted IDs fall back to array positions. Only one helper exchange may be active per execution; a concurrent call fails rather than sharing events.
@@ -65,7 +113,7 @@ The helper uses an isolated directory with mode 0700, atomic JSON files and a 10
 }
 ```
 
-Blocks render vertically within their region in a compact layout with 12 pt horizontal insets, 8 pt block spacing, and small native buttons separated by 6 pt. List rows have a 26 pt minimum height and grow for wrapped labels. A `buttons` block lays out actions horizontally and wraps them onto additional rows as needed; long labels wrap within their button. Add more button blocks for separate action groups. Text and list rows grow to fit wrapped content. Lists expand to fit all their rows, with no internal scroll container or height limit. The body fills the space between optional fixed header/footer regions and scrolls as one surface when its contents exceed the available height. The tab strip and hidden-input notice remain fixed above the panel. For large datasets, use script-controlled Previous/Next buttons to paginate and keep actions easy to reach. All interactive UI scroll indicators are hidden; trackpad and mouse-wheel scrolling remain available. List headers show the item and selection counts. Text is plain, selectable text. There are no HTML, coordinates, arbitrary nesting, or executable callbacks.
+Blocks render vertically within their region in a compact layout with 12 pt horizontal insets, 8 pt block spacing, and native buttons separated by 8 pt. List rows have a 28 pt minimum height and grow for wrapped labels. A `buttons` block lays out actions horizontally and wraps them onto additional rows as needed; long labels wrap within their button. Add more button blocks for separate action groups. Text and list rows grow to fit wrapped content. A footer with exactly one non-destructive callback highlights that action visually. Lists expand to fit all their rows, with no internal scroll container or height limit. The body fills the space between optional fixed header/footer regions and scrolls as one surface when its contents exceed the available height. The tab strip and hidden-input notice remain fixed above the panel. For large datasets, use script-controlled Previous/Next buttons to paginate and keep actions easy to reach. All interactive UI scroll indicators are hidden; trackpad and mouse-wheel scrolling remain available. List headers show the item and selection counts. Text is plain, selectable text. There are no HTML, coordinates, arbitrary nesting, or executable callbacks.
 
 `list.id` is required and unique across the view. Item IDs are required and unique within their list. `multiple` defaults to false. Lists start unselected on a new page; same-page retention is described below. Clicking an already selected single-selection item clears it. Button labels are required strings; callback buttons require `data`, while local assignment buttons require `action`. Labels and data are always treated as content, never executed by the app.
 
@@ -157,6 +205,34 @@ Button items accept `style` (`default` or `destructive`), `disabled` (boolean, d
 
 These optional fields are backward compatible; existing scripts must add them to opt into structured metadata and explicit styling. The app does not split a combined `filename — size` string or guess destructive actions from labels.
 
+A `text` block can set `notice` to `success`, `warning`, `error`, or `info`
+for an inline status message. Keep the full message in `text` so clients
+without notice styling still display it as plain text.
+
+## Sections, tables, and badges
+
+Use a `text` block with `"section": true` before a group of related blocks.
+The title appears as a heading with a divider. Blocks remain in their declared
+order and keep their existing IDs and regions.
+
+Use a `list` with two to four nonempty `columns` to align data across rows.
+The first column displays each item's `text`. Supply one `cells` string per
+remaining column, in order. Use the usual list IDs and selection options.
+A row can also set `badge` to `running`, `completed`, or `failed`.
+
+```json
+{"blocks":[
+  {"type":"text","text":"Recent tasks","section":true},
+  {"type":"list","id":"tasks","columns":["Task","Server","Duration"],"items":[
+    {"id":"backup","text":"Backup","cells":["Storage","24 s"],"badge":"completed","detail":"Storage · 24 s · Completed"}
+  ]}
+]}
+```
+
+Clients that ignore these fields display the section title as text and the
+table as a standard list. Provide optional item `detail` for a readable
+summary in those clients. A badge can also appear on a standard list row.
+
 ## Form and progress blocks
 
 All input controls use a nonempty `id`, unique across all blocks with IDs in the view. `label` is optional plain text. Changes stay in the app until a callback button is clicked; switching output tabs preserves them. Named pages retain compatible control state as described below. Views without `pageID` initialize text, select, and toggle controls from defaults and reset list selections, while compatible file controls retain selected paths. Controls require a button block in the same view to accept user interaction. Without buttons, a view is a status update and returns immediately.
@@ -198,7 +274,7 @@ File selection supports a native macOS chooser and dragging local files or folde
 
 A single-file picker can set `filenameTarget` to the ID of a nonsecure input on the same page. Picking or dropping a file fills an empty field or replaces the previous filename suggestion. Clearing the selection clears the previous suggestion. Other edits are preserved. Optional `filenameStripSuffix` removes one matching suffix from the suggested basename.
 
-Single-line and multiline inputs use native expanding fields, without an embedded scrolling editor. `secure` masks a single-line field and cannot be combined with `multiline`. Masking affects display only: the entered string is returned to the script. Do not print callbacks containing passwords or store them in logs. Validation, required fields, and cancellation behavior belong to the script; every button returns all current input values, including Cancel. Select items require nonempty unique IDs and 1–1,000 options; an explicit `value` must match one. Toggles always return strings to preserve the existing string-array event format.
+Single-line and multiline inputs use native expanding fields, without an embedded scrolling editor. `secure` masks a single-line field and cannot be combined with `multiline`. The eye button temporarily reveals a secure input until the next request, submission, or session end. Masking affects display only: the entered string is returned to the script. Do not print callbacks containing passwords or store them in logs. Validation, required fields, and cancellation behavior belong to the script; every button returns all current input values, including Cancel. Select controls show the selected option's optional detail and offer search when there are at least 12 options. Disabled options remain visible. Select items require nonempty unique IDs and 1–1,000 options; an explicit `value` must match one. Toggles always return strings to preserve the existing string-array event format.
 
 For progress, publish views without buttons between portions of work:
 
@@ -206,7 +282,11 @@ For progress, publish views without buttons between portions of work:
 {"blocks":[{"type":"progress","label":"Uploading…","progress":0.5}]}
 ```
 
-Omit `progress` for an indeterminate spinner. These updates describe the complete panel and update it in place; they do not create background work or emit input events. Display-only views do not show an additional waiting indicator. The script runs the operation and chooses when to publish the next update.
+Omit `progress` for an indeterminate spinner. Use `label` for the current task
+and optional `text` for a script-formatted detail such as completed count and
+estimated time remaining. Clients without detail support still show the label
+and progress. For an error that can be retried, use an error notice and a
+callback button for the script's retry action. These updates describe the complete panel and update it in place; they do not create background work or emit input events. Display-only views do not show an additional waiting indicator. The script runs the operation and chooses when to publish the next update.
 
 Limits: 256 KiB input, 100 blocks, 1,000 items per list or select, and 1–8 buttons per button block. Use script-controlled pagination for larger datasets. Unknown block types, invalid IDs, and invalid JSON fail with a nonzero helper exit status and a diagnostic on stderr.
 
@@ -220,7 +300,7 @@ A callback button click returns its opaque `data` plus current control values (l
 
 All input control IDs appear in `values`, including empty selections. Text and progress blocks do not contribute values. Changes to selection and local field assignments do not send events. Controls disable immediately after a callback click until the script publishes its next view, preventing duplicate submissions. Text remains readable and scrollable. If the next view takes longer than 250 ms, a compact waiting indicator overlays the body without moving content; faster exchanges do not show it. The app rejects callbacks from replaced views.
 
-Confirmation is another view with Confirm and Cancel buttons. The script stores the selected IDs before showing it, checks the chosen action, performs deletion, and publishes a fresh list. Use stable opaque file IDs and verify the target before destructive operations; do not concatenate callbacks into shell commands. Confirmation and business operations belong to the script.
+Confirmation is another view with a warning notice that names the target and the effect of the action, a destructive Confirm button, and a Cancel button. The script stores the selected IDs before showing it, checks the chosen action, performs deletion, and publishes a fresh list. Use stable opaque file IDs and verify the target before destructive operations; do not concatenate callbacks into shell commands. Confirmation and business operations belong to the script.
 
 ## Shell
 

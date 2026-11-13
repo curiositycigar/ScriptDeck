@@ -218,7 +218,7 @@ private struct RunningTaskRow: View {
                 .accessibilityLabel(L("Elapsed"))
             Button(L("View Output")) { runner.showExecution(session) }
             Button(session.stopping ? L("Force Stop") : L("Stop"), role: .destructive) {
-                session.stop(force: session.stopping)
+                runner.stopAndCloseExecution(session)
             }
         }.padding(16)
     }

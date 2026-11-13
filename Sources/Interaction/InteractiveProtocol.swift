@@ -34,6 +34,12 @@ struct InteractiveView: Codable, Equatable {
                 for item in items {
                     guard let id = item.id, !id.isEmpty, ids.insert(id).inserted else { throw InteractiveProtocolError.invalid }
                 }
+                if let columns = block.columns {
+                    guard (2...4).contains(columns.count), columns.allSatisfy({ !$0.isEmpty }),
+                          items.allSatisfy({ $0.cells?.count == columns.count - 1 }) else {
+                        throw InteractiveProtocolError.invalid
+                    }
+                }
             case .input, .file, .select, .toggle:
                 guard let id = block.id, !id.isEmpty else { throw InteractiveProtocolError.invalid }
                 if block.type == .input && block.multiline == true && block.secure == true { throw InteractiveProtocolError.invalid }
@@ -103,9 +109,14 @@ struct InteractiveBlock: Codable, Equatable {
     var reset: Bool? = nil
     var filenameTarget: String? = nil
     var filenameStripSuffix: String? = nil
+    enum Notice: String, Codable { case success, warning, error, info }
+    var notice: Notice? = nil
+    var section: Bool? = nil
+    var columns: [String]? = nil
 }
 
 struct InteractiveItem: Codable, Equatable {
+    enum Badge: String, Codable { case running, completed, failed }
     var id: String?
     var text: String
     var data: String?
@@ -115,6 +126,8 @@ struct InteractiveItem: Codable, Equatable {
     var disabled: Bool?
     var requiresSelection: String?
     var action: InteractiveLocalAction? = nil
+    var cells: [String]? = nil
+    var badge: Badge? = nil
 }
 
 /// A bounded local form operation; never executes script code or submits an event.

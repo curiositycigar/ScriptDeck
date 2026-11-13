@@ -612,3 +612,20 @@
 
 "Drop files here" = "Drop files here";
 "Drop folders here" = "Drop folders here";
+
+"Invalid ScriptDeck version declaration in the script header." = "Invalid ScriptDeck version declaration in the script header.";
+"This script requires ScriptDeck {0}, but the current version could not be determined." = "This script requires ScriptDeck {0}, but the current version could not be determined.";
+"This script requires ScriptDeck {0}. You are running {1}. Install a compatible version and try again." = "This script requires ScriptDeck {0}. You are running {1}. Install a compatible version and try again.";
+"Show password" = "Show password";
+"Hide password" = "Hide password";
+"Search options" = "Search options";
+"No matching options" = "No matching options";
+"{0} selected" = "{0} selected";
+
+"Success" = "Success";
+"Warning" = "Warning";
+"Error" = "Error";
+"Information" = "Information";
+"Progress" = "Progress";
+"No content to display" = "No content to display";
+"Completed" = "Completed";

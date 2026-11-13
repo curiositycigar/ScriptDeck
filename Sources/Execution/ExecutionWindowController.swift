@@ -30,7 +30,9 @@ final class ExecutionWindowController: NSWindowController, NSWindowDelegate {
         showWindow(nil)
         window?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
-        session.focusTerminal()
+        if session.interactiveChannel == nil || session.showingTerminalLog {
+            session.focusTerminal()
+        }
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
@@ -75,7 +77,9 @@ struct ExecutionWindowView: View {
             CredentialManagerView(runner: runner, target: credentialTarget,
                                   scriptName: session.activeName, session: session)
         }
-        .sheet(item: $hiddenInput.session) { target in HiddenInputPrompt(runner: runner, session: target) }
+        .sheet(item: $hiddenInput.session, onDismiss: {
+            if session.showingTerminalLog { session.focusTerminal() }
+        }) { target in HiddenInputPrompt(runner: runner, session: target) }
         .onReceive(Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()) { _ in
             hiddenInput.poll(sessions: [session], selected: session,
                              canPresent: !showingCredentials && NSApp.isActive &&
@@ -90,12 +94,7 @@ struct ExecutionWindowView: View {
     private var executionToolbar: some View {
         HStack(spacing: 4) {
             if session.interactiveChannel != nil {
-                Picker(L("Output View"), selection: $session.showingTerminalLog) {
-                    Text(L("Interactive UI")).tag(false)
-                    Text(L("Terminal Log")).tag(true)
-                }
-                .labelsHidden().pickerStyle(.segmented).controlSize(.small)
-                .fixedSize(horizontal: true, vertical: false)
+                SessionOutputPicker(showingTerminalLog: $session.showingTerminalLog)
             }
             Spacer(minLength: 8)
             if !session.isBackgroundExecution {

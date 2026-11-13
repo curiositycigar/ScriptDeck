@@ -29,6 +29,11 @@ final class ProcessRunner: ObservableObject {
         session.stop(force: session.stopping)
     }
 
+    func stopAndCloseExecution(_ session: ExecutionSession) {
+        session.stop(force: session.stopping)
+        executionWindows[session.id]?.close()
+    }
+
     func showSelectedExecution() {
         guard let session = sessions.first(where: { $0.id == selectedSessionID }) ?? sessions.last else { return }
         showExecution(session)

@@ -612,3 +612,20 @@
 
 "Drop files here" = "将文件拖到此处";
 "Drop folders here" = "将文件夹拖到此处";
+
+"Invalid ScriptDeck version declaration in the script header." = "脚本头部的 ScriptDeck 版本声明无效。";
+"This script requires ScriptDeck {0}, but the current version could not be determined." = "此脚本要求 ScriptDeck {0}，但无法确定当前版本。";
+"This script requires ScriptDeck {0}. You are running {1}. Install a compatible version and try again." = "此脚本要求 ScriptDeck {0}，当前版本为 {1}。请安装兼容版本后重试。";
+"Show password" = "显示密码";
+"Hide password" = "隐藏密码";
+"Search options" = "搜索选项";
+"No matching options" = "没有匹配的选项";
+"{0} selected" = "已选择 {0} 项";
+
+"Success" = "成功";
+"Warning" = "警告";
+"Error" = "错误";
+"Information" = "信息";
+"Progress" = "进度";
+"No content to display" = "没有可显示的内容";
+"Completed" = "已完成";

@@ -38,6 +38,7 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
         }
         try runScriptInstanceSelfTests(root: root)
         if ProcessInfo.processInfo.environment["RUNNER_TEST_INSTANCES_ONLY"] == "1" { return }
+        try checkScriptClientVersion(root: root)
         try runInteractiveUISelfTests(root: root)
         try checkHiddenInputNotice(root: root)
         try checkInteractiveAdaptiveLayout()
@@ -235,7 +236,9 @@ func check(_ condition: @autoclosure () -> Bool, _ description: String) {
             try bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "/tmp/scriptdeck-execution.png"))
         }
         concurrent.select(firstSession.id)
-        secondSession.stop()
+        concurrent.stopAndCloseExecution(secondSession)
+        check(!secondWindow.isVisible && firstWindow.isVisible,
+              "Stopping from the dashboard closes only the target execution window")
         pump(until: { !secondSession.isRunning })
         check(firstSession.isRunning, "Stopping a bound session works while a different session is selected")
         concurrent.select(secondSession.id)

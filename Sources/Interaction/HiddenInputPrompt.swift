@@ -48,7 +48,8 @@ struct HiddenInputPrompt: View {
     @State private var filling = false
     @State private var issue: String?
     @State private var fillTask: Task<Void, Never>?
-    @FocusState private var inputFocused: Bool
+    private enum Field: Hashable { case source, password }
+    @FocusState private var focusedField: Field?
 
     private var target: CredentialTarget? {
         guard let workspaceID = session.workspaceID, let scriptID = session.scriptID else { return nil }
@@ -76,33 +77,46 @@ struct HiddenInputPrompt: View {
                     Text(credential.name).tag(credential.id)
                 }
             }
+            .focused($focusedField, equals: .source)
+            .disabled(filling)
             if credentialID.isEmpty {
                 SecureField(L("Password"), text: $password).textFieldStyle(.roundedBorder)
-                    .focused($inputFocused)
+                    .focused($focusedField, equals: .password)
+                    .disabled(filling)
             } else {
                 Label(L("Password saved in Keychain"), systemImage: "key.fill")
                     .font(WorkspaceTypography.caption).foregroundStyle(.secondary)
             }
             Toggle(L("Press Return after filling"), isOn: $appendReturn).toggleStyle(.checkbox)
+                .disabled(filling)
             if let issue {
                 Text(issue).font(WorkspaceTypography.caption).foregroundStyle(.red)
                     .fixedSize(horizontal: false, vertical: true)
             }
             HStack {
-                Button(L("Terminal Log")) { session.showingTerminalLog = true; dismiss() }
+                Button(L("Terminal Log")) { session.showingTerminalLog = true; close() }
                 Spacer()
-                Button(L("Cancel"), role: .cancel) { dismiss() }.keyboardShortcut(.cancelAction)
+                Button(L("Cancel"), role: .cancel, action: close).keyboardShortcut(.cancelAction)
                 Button(filling ? L("Filling…") : L("Send"), action: send)
                     .keyboardShortcut(.defaultAction)
-                    .disabled((credentialID.isEmpty ? password.isEmpty : !store.items.contains { $0.id == credentialID }) ||
+                    .disabled(filling || (credentialID.isEmpty ? password.isEmpty : !store.items.contains { $0.id == credentialID }) ||
                               !session.needsHiddenInputNotice)
             }
         }
         .font(WorkspaceTypography.body).padding(20).frame(width: 420)
-        .disabled(filling)
-        .onAppear { inputFocused = true }
-        .onChange(of: credentialID) { _ in password = ""; issue = nil; inputFocused = credentialID.isEmpty }
+        .onAppear { focusedField = .password }
+        .onChange(of: credentialID) { _ in
+            password = ""
+            issue = nil
+            focusedField = credentialID.isEmpty ? .password : .source
+        }
         .onDisappear { password = ""; fillTask?.cancel() }
+    }
+
+    private func close() {
+        fillTask?.cancel()
+        password = ""
+        dismiss()
     }
 
     private func send() {
@@ -117,7 +131,10 @@ struct HiddenInputPrompt: View {
                 password = ""
                 dismiss()
             } catch is CancellationError { }
-            catch { issue = error.localizedDescription }
+            catch {
+                issue = error.localizedDescription
+                focusedField = credentialID.isEmpty ? .password : .source
+            }
         }
     }
 }

@@ -39,7 +39,7 @@ JSON
                     printf 'Previewing simulated progress for environment: %s\n' "$DEMO_ENV"
                     for DEMO_PROGRESS in 0 0.25 0.5 0.75 1; do
                         "$SCRIPTDECK_UI" --ui <<JSON
-{"blocks":[{"type":"text","text":"Simulated upload — no files are read or transferred"},{"type":"progress","label":"Progress","progress":$DEMO_PROGRESS}]}
+{"blocks":[{"type":"text","text":"Simulated upload — no files are read or transferred"},{"type":"progress","label":"Preview progress","progress":$DEMO_PROGRESS}]}
 JSON
                         sleep 0.25
                     done
@@ -59,7 +59,7 @@ JSON
             delete)
                 [[ "$DEMO_SELECTED" == backup || "$DEMO_SELECTED" == report ]] || continue
                 DEMO_CONFIRM=$("$SCRIPTDECK_UI" --ui --action-only <<JSON
-{"blocks":[{"type":"text","text":"Delete the fictional file: $DEMO_SELECTED?"},{"type":"buttons","items":[{"text":"Confirm deletion","data":"confirm","style":"destructive"},{"text":"Cancel","data":"cancel"}]}]}
+{"blocks":[{"type":"text","text":"Delete the fictional file: $DEMO_SELECTED?","notice":"warning"},{"type":"buttons","items":[{"text":"Confirm deletion","data":"confirm","style":"destructive"},{"text":"Cancel","data":"cancel"}]}]}
 JSON
                 )
                 if [[ "$DEMO_CONFIRM" == confirm ]]; then

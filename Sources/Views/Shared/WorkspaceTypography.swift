@@ -27,10 +27,13 @@ enum WorkspaceTypography {
 
 /// Compact spacing shared by interactive content, actions, and its tab strip.
 enum InteractivePanelMetrics {
+    static let inlineSpacing: CGFloat = 4
     static let inset: CGFloat = 12
     static let blockSpacing: CGFloat = 8
-    static let actionSpacing: CGFloat = 6
-    static let rowHeight: CGFloat = 26
+    static let actionSpacing: CGFloat = 8
+    static let groupSpacing: CGFloat = 16
+    static let rowHeight = WorkspaceControlMetrics.compactTarget
+    static let controlRadius: CGFloat = 8
 }
 
 enum WorkspaceIconSize: CGFloat {
